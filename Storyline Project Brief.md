@@ -10,19 +10,20 @@ The system is a monolithic Node.js application built with next.js. The system wi
 
 * **Backend:** A Node.js server built with Next.js. It will handle data ingestion, orchestrate the AI agent workflow, interact with the graph database, and serve an API for the frontend.  
 * **Data Storage:** A Neo4j graph database will store event nodes and their relationships.  
-* **AI Integration:** The system will interact with a Large Language Model (LLM) via a generic API. The specific LLM provider will be configurable.  
+* **AI Integration:** The system will use Mastra.ai, a TypeScript AI agent framework, for managing AI agents, tool use, and real-time streaming of agent interactions to the frontend. The LLM provider will be configurable through Mastra's provider system.  
 * **Frontend:** A simple, single-page React application will consume data from the backend API to display agent logs. It will also allow the user to start a new run of the software using a new docx or txt file. That file will ten be analyzed, with the process output in human-readable format on the frontend.
 
 ## **3\. Technology Stack**
 
 * **Backend:** Node.js, Next.js
-* **Database:** Neo4j (using the neo4j-driver for Node.js)  
-* **File Parsing:**  
-  * .docx: mammoth library  
-  * .xlsx: xlsx library  
-* **Logging:** pino for structured, file-based logging of agent interactions.  
-* **Frontend:** React (via Next.js)), Tailwind CSS for styling.  
-* **API Communication:** REST API between backend and frontend.
+* **AI Framework:** Mastra.ai for agent management, tool use, and real-time streaming
+* **Database:** Neo4j (using the neo4j-driver for Node.js)
+* **File Parsing:**
+  * .docx: mammoth library
+  * .xlsx: xlsx library
+* **Logging:** pino for structured, file-based logging of agent interactions.
+* **Frontend:** React (via Next.js)), Tailwind CSS for styling.
+* **API Communication:** REST API between backend and frontend, with real-time streaming via Mastra.ai.
 
 ## **4\. Data Models**
 
@@ -34,8 +35,9 @@ The graph will consist of Event nodes and BEFORE, AFTER, and CONCURRENT relation
 
 * id: Unique identifier (e.g., UUID).  
 * spreadsheetId: The corresponding ID from the input events spreadsheet.  
-* novelNumber: The number of the novel this event is from.  
+* novelName: The name of the provided docx or txt file that this event was found in.
 * quote: The direct text quote describing the event.  
+* description: A natural language description of the event, as the AI understands it from the text it has just read. This may provide more context than the direct quote.
 * charRangeStart: The starting character index of the quote in the novel text.  
 * charRangeEnd: The ending character index of the quote.  
 * absoluteDate: (Optional) A string representing any hard date found (e.g., "1888-04-12").
