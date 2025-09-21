@@ -1,5 +1,4 @@
 import mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
 import fs from 'fs/promises';
 import path from 'path';
 import pino from 'pino';
@@ -7,7 +6,7 @@ import pino from 'pino';
 const logger = pino({ name: 'file-parser' });
 
 /**
- * Interface for spreadsheet event data
+ * Interface for TSV event data
  */
 export interface SpreadsheetEvent {
   id?: string;
@@ -103,81 +102,66 @@ export async function readTxt(filePath: string): Promise<string> {
 }
 
 /**
- * Reads a spreadsheet file and returns the data as an array of JSON objects
- * @param {string} filePath - Path to the spreadsheet file (.xlsx, .xls, .csv, .tsv)
- * @param {string} sheetName - Optional sheet name (defaults to first sheet)
- * @returns {Promise<SpreadsheetEvent[]>} Array of objects representing spreadsheet rows
+ * Reads a TSV file and returns the data as an array of JSON objects
+ * @param {string} filePath - Path to the TSV file
+ * @returns {Promise<SpreadsheetEvent[]>} Array of objects representing TSV rows
  * @throws {Error} If the file cannot be read or parsed
  */
-export async function readSpreadsheet(
-  filePath: string,
-  sheetName?: string
-): Promise<SpreadsheetEvent[]> {
+export async function readTsv(filePath: string): Promise<SpreadsheetEvent[]> {
   try {
-    logger.info('Reading spreadsheet file', { filePath, sheetName });
+    logger.info('Reading TSV file', { filePath });
 
     // Check if file exists
     await fs.access(filePath);
 
-    // Determine file extension
-    const ext = path.extname(filePath).toLowerCase();
-    let workbook: XLSX.WorkBook;
+    // Read the file content
+    const content = await fs.readFile(filePath, 'utf-8');
 
-    if (ext === '.csv' || ext === '.tsv') {
-      // Read as text file first
-      const csvContent = await fs.readFile(filePath, 'utf-8');
-      const delimiter = ext === '.csv' ? ',' : '\t';
-      workbook = XLSX.read(csvContent, { type: 'string', delimiter });
-    } else {
-      // Read as binary file for Excel formats
-      const buffer = await fs.readFile(filePath);
-      workbook = XLSX.read(buffer, { type: 'buffer' });
-    }
+    // Split into lines and filter out empty lines
+    const lines = content.split('\n').filter(line => line.trim().length > 0);
 
-    // Get the target sheet
-    const targetSheetName = sheetName || workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[targetSheetName];
-
-    if (!worksheet) {
-      throw new Error(`Sheet "${targetSheetName}" not found in file`);
-    }
-
-    // Convert worksheet to JSON
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-      header: 1, // Use first row as header
-      defval: '', // Default value for empty cells
-    }) as any[][];
-
-    // If no data, return empty array
-    if (jsonData.length === 0) {
+    if (lines.length === 0) {
       return [];
     }
 
-    // Get headers from first row
-    const headers = jsonData[0] as string[];
+    // Get headers from first line
+    const headers = lines[0].split('\t').map(header => header.trim());
 
-    // Convert rows to objects
-    const events: SpreadsheetEvent[] = jsonData.slice(1).map((row, index) => {
+    // Convert remaining lines to objects
+    const events: SpreadsheetEvent[] = lines.slice(1).map((line, index) => {
+      const values = line.split('\t');
       const event: SpreadsheetEvent = {};
+
       headers.forEach((header, colIndex) => {
-        const value = row[colIndex];
-        event[header.toLowerCase().trim()] = value || '';
+        const value = values[colIndex] || '';
+        event[header.toLowerCase().trim()] = value.trim();
       });
+
       return event;
     });
 
-    logger.info('Successfully parsed spreadsheet file', {
+    logger.info('Successfully parsed TSV file', {
       filePath,
-      sheetName: targetSheetName,
       rowCount: events.length,
       columnCount: headers.length
     });
 
     return events;
   } catch (error) {
-    logger.error('Failed to read spreadsheet file', { filePath, error });
-    throw new Error(`Failed to read spreadsheet file "${filePath}": ${error}`);
+    logger.error('Failed to read TSV file', { filePath, error });
+    throw new Error(`Failed to read TSV file "${filePath}": ${error}`);
   }
+}
+
+/**
+ * Legacy function for backward compatibility with existing code
+ * @param {string} filePath - Path to the TSV file
+ * @returns {Promise<SpreadsheetEvent[]>} Array of objects representing TSV rows
+ * @throws {Error} If the file cannot be read or parsed
+ */
+export async function readSpreadsheet(filePath: string): Promise<SpreadsheetEvent[]> {
+  // Delegate to readTsv for backward compatibility
+  return readTsv(filePath);
 }
 
 /**
