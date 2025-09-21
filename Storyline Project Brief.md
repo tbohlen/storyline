@@ -6,29 +6,29 @@ The goal of this project is to build a Node.js application that runs an AI agent
 
 ## **2\. System Architecture**
 
-The system is a monolithic Node.js application with a web-based frontend for observation. It follows a modular, service-oriented pattern.
+The system is a monolithic Node.js application built with next.js. The system will support a web-based frontend for observation. It follows a modular, service-oriented pattern.
 
-* **Backend:** A Node.js server built with Express.js. It will handle data ingestion, orchestrate the AI agent workflow, interact with the graph database, and serve an API for the frontend.  
+* **Backend:** A Node.js server built with Next.js. It will handle data ingestion, orchestrate the AI agent workflow, interact with the graph database, and serve an API for the frontend.  
 * **Data Storage:** A Neo4j graph database will store event nodes and their relationships.  
 * **AI Integration:** The system will interact with a Large Language Model (LLM) via a generic API. The specific LLM provider will be configurable.  
-* **Frontend:** A simple, single-page React application will consume data from the backend API to display agent logs.
+* **Frontend:** A simple, single-page React application will consume data from the backend API to display agent logs. It will also allow the user to start a new run of the software using a new docx or txt file. That file will ten be analyzed, with the process output in human-readable format on the frontend.
 
 ## **3\. Technology Stack**
 
-* **Backend:** Node.js, Express.js  
+* **Backend:** Node.js, Next.js
 * **Database:** Neo4j (using the neo4j-driver for Node.js)  
 * **File Parsing:**  
   * .docx: mammoth library  
   * .xlsx: xlsx library  
 * **Logging:** pino for structured, file-based logging of agent interactions.  
-* **Frontend:** React (bootstrapped with Vite), Tailwind CSS for styling.  
+* **Frontend:** React (via Next.js)), Tailwind CSS for styling.  
 * **API Communication:** REST API between backend and frontend.
 
 ## **4\. Data Models**
 
 ### **4.1. Neo4j Graph Schema**
 
-The graph will consist of Event nodes and RELATES\_TO relationships.
+The graph will consist of Event nodes and BEFORE, AFTER, and CONCURRENT relationships which indicate how one event relates to another temporally.
 
 **Node: Event**
 
@@ -40,24 +40,30 @@ The graph will consist of Event nodes and RELATES\_TO relationships.
 * charRangeEnd: The ending character index of the quote.  
 * absoluteDate: (Optional) A string representing any hard date found (e.g., "1888-04-12").
 
-**Relationship: RELATES\_TO**
+**Relationships: BEFORE, AFTER, CONCURRENT**
 
-* type: The nature of the temporal relationship (e.g., 'BEFORE', 'AFTER', 'DURING').  
-* sourceText: The snippet of text that implies this relationship.
+* **BEFORE**: Indicates that the source event occurred before the target event.
+* **AFTER**: Indicates that the source event occurred after the target event.
+* **CONCURRENT**: Indicates that the source event occurred at the same time as the target event.
+
+Each relationship contains:
+* sourceText: The snippet of text that implies this temporal relationship.
 
 ### **4.2. Agent Log Schema (for agent\_logs.jsonl)**
 
 Each line in the log file will be a JSON object representing a single interaction.
 
-{  
-  "timestamp": "2023-10-27T10:00:00Z",  
-  "agentName": "EventDetectionAgent",  
-  "interactionType": "prompt" | "response",  
-  "content": "The text of the prompt or the full AI response.",  
-  "metadata": {  
-    "novelNumber": 1,  
-    "chunkNumber": 42  
-  }  
+{
+  "timestamp": "2023-10-27T10:00:00Z",
+  "agentName": "EventDetectionAgent",
+  "interactionType": "prompt" | "response" | "tool_call" | "tool_result" | "thinking",
+  "content": "The text of the prompt, AI response, tool call details, tool result, or thinking step.",
+  "toolName": "Optional. Present for tool_call and tool_result interactions.",
+  "toolParameters": "Optional. Present for tool_call interactions. The parameters passed to the tool.",
+  "metadata": {
+    "novelNumber": 1,
+    "chunkNumber": 42
+  }
 }
 
 ## **5\. General Coding Standards**
