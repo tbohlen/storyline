@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "neo4j:start": "neo4j start",
+    "neo4j:stop": "neo4j stop",
+    "neo4j:status": "neo4j status",
+    "neo4j:console": "neo4j console",
+    "dev:full": "npm run neo4j:start && npm run dev"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
