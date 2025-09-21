@@ -130,86 +130,120 @@ Follow these phases in strict order. Each phase builds upon the previous one.
 
 ## **Phase 3: Real-time Streaming & API Routes**
 
-**Objective:** Create Next.js API routes with Server-Sent Events for real-time agent log streaming.
+**Objective:** Create Next.js API routes that leverage Mastra's built-in streaming capabilities to display real-time agent interactions in a chat interface.
 
 **Instructions:**
 
-1. **Agent Logging Service (lib/services/agentLogger.ts):**
-   * Create a service that uses pino to write structured JSON logs.
-   * Configure pino to write to a file: agent_logs.jsonl.
-   * Create functions for logging all interaction types: logPrompt, logResponse, logToolCall, logToolResult, logThinking.
-   * Integrate with Mastra's streaming events to capture all agent interactions.
-2. **Streaming Service (lib/services/streamingService.ts):**
-   * Create a service to manage Server-Sent Events connections.
-   * Implement functions to broadcast agent logs to all connected clients in real-time.
-   * Handle client connection management and cleanup.
-3. **API Routes:**
-   * **GET /api/logs:** Endpoint that returns historical agent logs from agent_logs.jsonl.
-   * **GET /api/stream:** Server-Sent Events endpoint for real-time agent log streaming.
-   * **POST /api/process:** Endpoint that triggers the orchestrator workflow with file upload support.
-   * **GET /api/events:** Endpoint to query Neo4j for event data and relationships.
-4. **File Upload Support (app/api/upload/route.ts):**
-   * Create an API route to handle .docx and .txt file uploads.
-   * Store uploaded files in the /data directory.
-   * Return file metadata for processing.
+1. **Mastra Streaming Integration (lib/services/streamingAdapter.ts):**
+   * Create an adapter that captures Mastra's native streaming events using `onStepFinish`, `onChunk`, `onError`, `onAbort` callbacks.
+   * Transform Mastra's streaming data into chat message format with agent names and message types.
+   * Handle different event types: agent messages, tool calls, thinking blocks, and errors.
+   * Use Mastra's built-in streaming instead of custom logging services.
 
-## **Phase 4: Frontend Interface with Real-time Updates**
+2. **API Routes:**
+   * **POST /api/upload:** Handle .docx and .txt file uploads, store in /data directory, return file metadata.
+   * **POST /api/process:** Endpoint that triggers the Mastra workflow and returns a streaming response.
+     * Use Mastra's `agent.streamVNext()` with `format: 'aisdk'` for Next.js compatibility.
+     * Return `stream.toUIMessageStreamResponse()` for direct frontend consumption.
+     * Configure streaming callbacks to capture agent names, tool calls, and thinking blocks.
+   * **GET /api/events:** Query Neo4j for event data and relationships (for final graph visualization).
 
-**Objective:** Build a Next.js frontend that displays real-time agent interactions and allows file processing initiation.
+3. **Chat Message Formatting:**
+   * Leverage Mastra's streaming callbacks to automatically format messages by agent:
+     * **Orchestrator**: Workflow coordination messages and text chunk assignments.
+     * **Event Detector**: Event analysis, "no event found" responses, and `createEventNode` tool calls.
+     * **Relationship Detector**: Relationship analysis and `createRelationship` tool calls.
+   * Use Mastra's built-in tool call streaming to automatically display tool executions with parameters and results.
+   * Capture thinking blocks from agents that support reasoning display.
+
+4. **Frontend Integration Support:**
+   * Use Mastra's AI SDK v5 compatibility (`format: 'aisdk'`) for seamless integration with React components.
+   * Stream data structure includes agent identification, message content, tool calls, and thinking blocks.
+   * No custom Server-Sent Events needed - leverage Mastra's native streaming protocol.
+
+## **Phase 4: Chat-Based Frontend Interface**
+
+**Objective:** Build a Next.js frontend with a chat interface that displays real-time agent interactions using Mastra's streaming capabilities.
 
 **Instructions:**
 
-1. **Real-time Hook (components/hooks/useAgentStream.ts):**
-   * Create a custom React hook that connects to the Server-Sent Events endpoint.
-   * Manage real-time agent log updates and connection state.
-   * Handle reconnection logic for dropped connections.
-2. **File Upload Component (components/FileUpload.tsx):**
+1. **File Upload Interface (components/FileUpload.tsx):**
    * Create a drag-and-drop file upload component using Tailwind CSS.
-   * Support .docx and .txt file uploads.
-   * Display upload progress and trigger processing after upload.
-3. **Agent Log Viewer (components/AgentLogViewer.tsx):**
-   * Create a component that displays agent interactions in real-time.
-   * Render different interaction types (prompt, response, tool_call, tool_result, thinking) with distinct styling.
-   * Use auto-scrolling to follow the latest interactions.
-   * Apply syntax highlighting for tool parameters and structured data.
-4. **Graph Visualization (components/GraphViewer.tsx):**
-   * Create a basic component to visualize the Neo4j event graph.
-   * Show Event nodes and BEFORE/AFTER/CONCURRENT relationships.
-   * Allow basic interaction with the graph (zoom, pan, node selection).
-5. **Main Application (app/page.tsx):**
-   * Combine all components into a cohesive interface.
-   * Implement tabbed or split-pane layout for file upload, agent logs, and graph visualization.
-   * Use React state management for coordinating between components.
+   * Support .docx and .txt file uploads with visual feedback.
+   * Display "Start" button after successful file upload.
+   * Handle upload state and error messaging.
+
+2. **Chat Interface (components/ChatInterface.tsx):**
+   * Build a chat window that appears when "Start" button is clicked.
+   * Use Mastra's AI SDK v5 compatibility for seamless streaming integration.
+   * Implement chat bubbles for each agent message with distinct styling.
+   * Auto-scroll to follow latest messages during processing.
+
+3. **Agent Message Components:**
+   * **Agent Identifier (components/AgentBubble.tsx):**
+     * Display clear agent names: "Orchestrator", "Event Detector", "Relationship Detector".
+     * Use distinct colors/icons for each agent type.
+   * **Tool Call Display (components/ToolCallBubble.tsx):**
+     * Render tool calls in visually distinct format (e.g., code blocks, highlighted boxes).
+     * Show tool name, parameters, and results clearly.
+     * Use syntax highlighting for JSON parameters.
+   * **Thinking Block Display (components/ThinkingBubble.tsx):**
+     * Display agent reasoning/thinking in expandable/collapsible format.
+     * Use different styling to distinguish from regular messages.
+
+4. **Streaming Integration Hook (hooks/useMastraStream.ts):**
+   * Create React hook that consumes Mastra's streaming response from `/api/process`.
+   * Handle different message types: agent messages, tool calls, thinking blocks, errors.
+   * Manage connection state and error handling automatically.
+   * Parse streaming data to extract agent names and message content.
+
+5. **Main Application Layout (app/page.tsx):**
+   * Two-phase interface: File upload view → Chat interface view.
+   * Simple state management to switch between upload and chat modes.
+   * Display processing status and completion indicators.
+   * Option to view final event graph after processing completes.
+
 6. **Styling and UX:**
-   * Apply consistent Tailwind CSS styling throughout the application.
-   * Implement responsive design for desktop and tablet viewing.
-   * Add loading states, error handling, and user feedback mechanisms.
+   * Use Tailwind CSS for consistent styling across all components.
+   * Implement responsive design optimized for chat interface.
+   * Add loading animations and processing indicators.
+   * Clear visual hierarchy for different message types and agents.
 
-## **Phase 5: Advanced Features & Production Readiness**
+## **Phase 5: Neo4j Visualization & Split-Screen Interface**
 
-**Objective:** Add advanced Mastra.ai features and prepare for production deployment.
+**Objective:** Add real-time Neo4j graph visualization using neovis.js and implement a split-screen layout with chat on the left and graph visualization on the right.
 
 **Instructions:**
 
-1. **Agent Memory & Context (lib/services/agentMemory.ts):**
-   * Implement Mastra's memory features for agents to maintain context across processing sessions.
-   * Store and retrieve relevant event context for relationship analysis.
-2. **Multi-Agent Workflows:**
-   * Expand the orchestrator to run multiple agents in parallel using Mastra's workflow capabilities.
-   * Implement agent handoffs and collaborative processing.
-3. **Error Handling & Recovery:**
-   * Implement comprehensive error handling with Mastra's built-in retry mechanisms.
-   * Add circuit breakers for external API calls.
-   * Create error recovery workflows for failed processing attempts.
-4. **Performance Optimization:**
-   * Implement Mastra's batching features for efficient LLM API usage.
-   * Add caching layers for repeated operations.
-   * Optimize Neo4j queries and implement connection pooling.
-5. **Testing & Monitoring:**
-   * Create unit tests for all services and agents.
-   * Implement integration tests for the complete workflow.
-   * Add Mastra's built-in observability features for production monitoring.
-6. **Deployment Configuration:**
-   * Configure environment variables for production deployment.
-   * Set up Docker containerization if needed.
-   * Prepare database migration scripts and seeding data.
+1. **Dependencies & Setup:**
+   * Install neovis.js: `npm install neovis.js`
+   * Install additional typing if needed: `npm install @types/neovis.js` (if available)
+   * Configure Neo4j connection settings for browser access (CORS, authentication)
+
+2. **Graph Visualization Component (components/GraphVisualization.tsx):**
+   * Create a React component that integrates neovis.js for Neo4j visualization
+   * Configure neovis with Neo4j connection details (URI, credentials)
+   * Set up graph styling for Event nodes and relationship types (BEFORE, AFTER, CONCURRENT)
+   * Implement node styling: Event nodes with distinct colors, labels showing event descriptions
+   * Configure relationship styling: Different colors/styles for BEFORE (green), AFTER (red), CONCURRENT (blue)
+   * Add interaction capabilities: node selection, zoom, pan, and reset view
+   * Implement graph legends explaining node types and relationship meanings
+
+3. **Real-time Graph Updates:**
+   * Integrate graph updates with the chat interface processing
+   * Listen for tool call completions (createEventNode, createRelationship) from the stream
+   * Trigger graph refresh/updates when new nodes or relationships are created
+   * Implement incremental graph updates rather than full reloads for better performance
+   * Add visual indicators when graph is updating (loading states)
+
+4. **Split-Screen Layout (components/SplitScreenInterface.tsx):**
+   * Modify the main application layout to show both chat and graph simultaneously
+   * Initialize both chat and graph components simultaneously
+   * Implement responsive split-screen: Chat interface (left 30%), Graph visualization (right 70%)
+   * Maintain proper responsive behavior for different screen sizes
+   * Ensure both panels remain functional and properly sized
+
+5. **Integration & Polish:**
+   * Ensure seamless coordination between chat progress and graph updates
+   * Add error handling for Neo4j connection issues
+   * Implement fallback UI if graph visualization fails to load

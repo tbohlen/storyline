@@ -8,22 +8,23 @@ The goal of this project is to build a Node.js application that runs an AI agent
 
 The system is a monolithic Node.js application built with next.js. The system will support a web-based frontend for observation. It follows a modular, service-oriented pattern.
 
-* **Backend:** A Node.js server built with Next.js. It will handle data ingestion, orchestrate the AI agent workflow, interact with the graph database, and serve an API for the frontend.  
-* **Data Storage:** A Neo4j graph database will store event nodes and their relationships.  
-* **AI Integration:** The system will use Mastra.ai, a TypeScript AI agent framework, for managing AI agents, tool use, and real-time streaming of agent interactions to the frontend. The LLM provider will be configurable through Mastra's provider system.  
-* **Frontend:** A simple, single-page React application will consume data from the backend API to display agent logs. It will also allow the user to start a new run of the software using a new docx or txt file. That file will ten be analyzed, with the process output in human-readable format on the frontend.
+* **Backend:** A Node.js server built with Next.js. It will handle data ingestion, orchestrate AI agent workflows using Mastra's workflow system, interact with the graph database, and serve streaming APIs for the frontend.
+* **Data Storage:** A Neo4j graph database will store event nodes and their relationships.
+* **AI Integration:** The system will use Mastra.ai, a TypeScript AI agent framework, for managing AI agents, workflows, tool use, and real-time streaming of agent interactions to the frontend. The LLM provider will be configurable through Mastra's provider system.
+* **Frontend:** A React application built with Next.js that displays real-time agent interactions in a chat interface alongside live Neo4j graph visualization. Users can upload docx/txt files and view the processing in real-time through a split-screen interface.
 
 ## **3\. Technology Stack**
 
 * **Backend:** Node.js, Next.js
-* **AI Framework:** Mastra.ai for agent management, tool use, and real-time streaming
-* **Database:** Neo4j (using the neo4j-driver for Node.js)
+* **AI Framework:** Mastra.ai (@mastra/core) for agent management, workflows, tool use, and real-time streaming
+* **Database:** Neo4j (using neo4j-driver for Node.js)
+* **Graph Visualization:** neovis.js for real-time Neo4j visualization in browser
 * **File Parsing:**
   * .docx: mammoth library
   * .xlsx: xlsx library
-* **Logging:** pino for structured, file-based logging of agent interactions.
-* **Frontend:** React (via Next.js)), Tailwind CSS for styling.
-* **API Communication:** REST API between backend and frontend, with real-time streaming via Mastra.ai.
+* **Logging:** pino for application-level logging (server startup, errors, etc.). Agent interactions are captured via Mastra's native streaming.
+* **Frontend:** React (via Next.js), Tailwind CSS for styling.
+* **API Communication:** Mastra's native streaming protocol with AI SDK v5 compatibility for seamless frontend integration.
 
 ## **4\. Data Models**
 
@@ -70,9 +71,9 @@ Each line in the log file will be a JSON object representing a single interactio
 
 ## **5\. General Coding Standards**
 
-* **Modularity:** Each core piece of functionality (file parsing, database interaction, AI service, agents) must be in its own module/file within a logical directory structure (e.g., /src/services, /src/agents).  
+* **Modularity:** Each core piece of functionality (file parsing, database interaction, AI service, agents, workflows) must be in its own module/file within a logical directory structure (e.g., /lib/services, /lib/agents, /lib/workflows, /lib/tools).  
 * **Configuration:** All external configuration (database credentials, LLM API keys, file paths) must be managed through environment variables (.env file). Do not hardcode them.  
 * **Asynchronous Operations:** Use async/await for all asynchronous operations, including file I/O, database queries, and API calls.  
 * **Error Handling:** Implement robust try/catch blocks for all I/O and API operations. Log errors clearly.  
 * **Comments:** Add JSDoc-style comments to all functions and modules explaining their purpose, parameters, and return values. Include inline comments for complex logic.  
-* **Logging:** In addition to the agent interaction logs, use a standard logger (like pino) for application-level logging (e.g., "Starting server", "Database connected", "Error processing file X").
+* **Logging:** Use pino for application-level logging (e.g., "Starting server", "Database connected", "Error processing file X"). Agent interactions are captured and streamed via Mastra's native streaming capabilities rather than separate log files.
