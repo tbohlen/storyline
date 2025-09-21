@@ -10,7 +10,7 @@ export async function readDocx(filePath: string): Promise<string> {
     logger.info(`Successfully read docx file: ${filePath}`);
     return result.value;
   } catch (error) {
-    logger.error({ filePath + " " + JSON.stringify(error }, `Failed to read docx file ${filePath}:`));
+    logger.error({ error: `${filePath} ${JSON.stringify(error)}` }, `Failed to read docx file ${filePath}:`);
     throw error;
   }
 }
@@ -24,7 +24,7 @@ export function readSpreadsheet(filePath: string): any[] {
     logger.info(`Successfully read spreadsheet file: ${filePath}`);
     return jsonData;
   } catch (error) {
-    logger.error({ filePath + " " + JSON.stringify(error }, `Failed to read spreadsheet file ${filePath}:`));
+    logger.error({ error: `${filePath} ${JSON.stringify(error)}` }, `Failed to read spreadsheet file ${filePath}:`);
     throw error;
   }
 }

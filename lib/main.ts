@@ -79,9 +79,9 @@ export async function processNovel(
     const chunkSize = options.chunkSize || 2000;
     const overlapSize = options.overlapSize || 200;
 
-    logger.info('Chunking text...' + " " + JSON.stringify({ chunkSize, overlapSize }));
+    logger.info(`Chunking text: ${chunkSize} size, ${overlapSize} overlap`);
     const chunks = chunkText(novelText, chunkSize, overlapSize);
-    logger.info('Text chunked successfully' + " " + JSON.stringify({ chunkCount: chunks.length }));
+    logger.info(`Text chunked successfully: ${chunks.length} chunks`);
 
     // Step 3: Process each chunk through the agent workflow
     const processedEvents: ProcessedEvent[] = [];
@@ -89,14 +89,14 @@ export async function processNovel(
 
     for (let i = 0; i < Math.min(maxChunks, chunks.length); i++) {
       const chunkNumber = i + 1;
-      logger.info(`Processing chunk ${chunkNumber}/${Math.min(maxChunks + " " + JSON.stringify(chunks.length))}`);
+      logger.info(`Processing chunk ${chunkNumber}/${Math.min(maxChunks, chunks.length)}`);
 
       try {
         // Agent 1: Event Detection
         const eventData = await detectEvent(chunks[i], novelNumber, chunkNumber);
 
         if (eventData) {
-          logger.info('Event detected + " " + JSON.stringify(proceeding with analysis', { eventId: eventData.id }));
+          logger.info(`Event detected, proceeding with analysis: ${eventData.id}`);
 
           // Agent 2: Date Assignment
           const dateResult = await assignDate(eventData);
@@ -123,7 +123,7 @@ export async function processNovel(
         }
 
       } catch (chunkError) {
-        logger.error(`Error processing chunk ${chunkNumber}:` + " " + JSON.stringify(chunkError));
+        logger.info(`Error processing chunk ${chunkNumber}: ${chunkError}`);
         // Continue with next chunk instead of failing entirely
       }
 
@@ -143,7 +143,7 @@ export async function processNovel(
       averageTimePerChunk: duration / Math.min(maxChunks, chunks.length)
     };
 
-    logger.info('Novel processing completed' + " " + JSON.stringify(summary));
+    logger.info(`Novel processing completed: ${summary.eventsFound} events found in ${summary.processingTime}ms`);
     return {
       success: true,
       summary,
@@ -151,7 +151,7 @@ export async function processNovel(
     };
 
   } catch (error) {
-    logger.error('Novel processing failed:' + " " + JSON.stringify(error));
+    logger.error(`Novel processing failed: ${error}`);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       success: false,
@@ -175,7 +175,7 @@ export interface SpreadsheetProcessingResult {
 }
 
 export async function processSpreadsheetEvents(spreadsheetPath: string): Promise<SpreadsheetProcessingResult> {
-  logger.info('Processing spreadsheet events (placeholder)' + " " + JSON.stringify({ spreadsheetPath }));
+  logger.info(`Processing spreadsheet events (placeholder): ${spreadsheetPath}`);
 
   // This would read the events spreadsheet and process them
   // For now, just return a placeholder response
