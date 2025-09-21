@@ -21,7 +21,7 @@ The system is a monolithic Node.js application built with next.js. The system wi
 * **File Parsing:**
   * .docx: mammoth library
   * .xlsx: xlsx library
-* **Logging:** pino for application-level logging (server startup, errors, etc.). Agent interactions are captured via Mastra's native streaming.
+* **Logging:** pino for application-level logging (server startup, errors, etc.).
 * **Frontend:** React (via Next.js), Tailwind CSS for styling.
 * **API Communication:** A custom system will be used to stream agent messages to the frontend
 

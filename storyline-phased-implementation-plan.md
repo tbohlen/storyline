@@ -2,63 +2,57 @@
 
 Follow these phases in strict order. Each phase builds upon the previous one.
 
-## **Phase 1: Core Setup & Data Ingestion** ✅ COMPLETED
+## **Phase 1: Core Setup & Data Ingestion**
 
 **Objective:** Create the foundational Next.js project structure and the logic for reading and preparing the input data.
 
 **Instructions:**
 
-1. **Project Setup:** ✅
-   * Initialize a new Next.js project with TypeScript (npx create-next-app@latest storyline --typescript --tailwind --eslint --app).
-   * Install additional dependencies: dotenv, mammoth, xlsx, neo4j-driver, pino, @mastra-ai/core.
-   * Create a directory structure: /lib, /lib/services, /lib/utils, /data (for input files).
-2. **Configuration Service (lib/services/config.ts):** ✅
-   * Create a module that loads environment variables from a .env.local file (e.g., NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, LLM_API_KEY).
-3. **Database Service (lib/services/database.ts):** ✅
+1. **Project Setup:**
+   * Install additional dependencies: dotenv, mammoth, xlsx, neo4j-driver, pino.
+2. **Configuration Service (lib/services/config.ts):**
+   * Create a module that loads environment variables from a .env.local file (e.g., NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, ANTHROPIC_API_KEY).
+3. **Database Service (lib/services/database.ts):**
    * Create a module to handle the connection to the Neo4j database using the neo4j-driver.
    * It should export a function getDriver() that returns the driver instance.
    * Include a function to test the connection.
-4. **Create a README:** ✅
-   * Create a readme explaining the project
+4. **Update README:**
+   * Update readme explaining the project
    * include instructions for running the project, including how to run neo4j.
-4. **File Parsing Service (lib/services/fileParser.ts):** ✅
+4. **File Parsing Service (lib/services/fileParser.ts):**
    * Implement a function readDocx(filePath) that uses mammoth to extract the raw text content from a .docx file.
    * Implement a function readSpreadsheet(filePath) that uses xlsx to read the event spreadsheet and return the data as an array of JSON objects.
-5. **Create a Test Script:** ✅
+5. **Create a Test Script:**
    * Create a file _test_phase1.js at the root.
    * This script should import and use the modules created above to:
      * Load a sample .docx file from the /data directory.
      * Chunk the text.
      * Log the first 5 chunks to the console to verify correctness.
 
-## **Phase 2: Mastra.ai Integration & Agent Workflow**
+## **Phase 2: AI Agent Workflow**
 
-**Objective:** Implement Mastra.ai agents with tool use capabilities that process the text and populate the Neo4j database with real-time streaming.
+**Objective:** Implement agents with tool use capabilities that process the text and populate the Neo4j database with real-time streaming.
 
 **Instructions:**
 
-1. **Mastra.ai Setup (lib/services/mastraService.ts):**
-   * Initialize Mastra with your chosen LLM provider (OpenAI, Anthropic, etc.).
-   * Configure the Mastra engine with streaming capabilities enabled.
-   * Create a base agent class that extends Mastra's agent functionality.
-2. **Database Tools & Support Services:**
-   * **Database Tools (lib/tools/databaseTools.ts):**
+1. **Database Tools & Support Services:**
+   * **Database Tools (src/lib/tools/databaseTools.ts):**
      * createEventNode: Tool to create Event nodes with proper typing.
      * createRelationship: Tool to create BEFORE, AFTER, or CONCURRENT relationships.
      * findExistingEvent: Tool to search for existing events by quote or metadata.
      * updateEventNode: Tool to update properties of an existing event, selecting the event by id.
-   * **Event Spreadsheet Store Service (lib/services/vectorStore.ts):**
+   * **Event Spreadsheet Store Service (src/lib/services/vectorStore.ts):**
      * Initialize vector database (e.g., Pinecone, Weaviate, or local embeddings).
      * Load TSV spreadsheet content into vectorized format for similarity search.
      * Provide queryEventSpreadsheet function for RAG-based event matching.
-   * **Novel Reader Service (lib/services/novelReader.ts):**
+   * **Novel Reader Service (src/lib/services/novelReader.ts):**
      * Loads the content of a docx or txt file
      * Tracks the current reading position in the file based on characters from the beginning.
      * Implement getTextChunk(startChar, endChar) function that returns specific text sections.
      * Implement getNextTextChunk(size) function that returns next N characters from current position.
      * Maintain internal position tracking for sequential processing.
-3. **Main Orchestrator (lib/services/orchestrator.ts):**
-   * Create a comprehensive orchestrator that manages the complete agent workflow using Mastra.
+2. **Main Orchestrator (src/lib/services/orchestrator.ts):**
+   * Create a comprehensive orchestrator that manages the complete agent workflow.
    * **Core Responsibilities:**
      * **Text Management:** Load novel content and manage text chunk provision to agents
      * **Agent Coordination:** Instantiate and coordinate between event detection and relationship assignment agents
@@ -83,8 +77,8 @@ Follow these phases in strict order. Each phase builds upon the previous one.
      * Configurable parameters for different processing strategies
      * Modular workflow steps that can be run independently or in sequence
      * Event-driven architecture for extensibility with additional agents
-4. **Agent: Event Detection (lib/agents/eventDetector.ts):**
-   * Create a Mastra agent that matches novel events to the master event spreadsheet.
+3. **Agent: Event Detection (lib/agents/eventDetector.ts):**
+   * Create an AI agent that matches novel events to the master event spreadsheet.
    * Initialize with the complete TSV spreadsheet content in the system prompt as context for event types.
    * Provide the agent with the **createEventNode(quote, charStart, charEnd, description)** tool that creates an Event node in Neo4j with the detected event details.
    * **Technical Orchestrator-Agent Interaction Flow:**
@@ -104,8 +98,8 @@ Follow these phases in strict order. Each phase builds upon the previous one.
      - MUST call **createEventNode** when events are found (triggers position-based continuation)
      - NO other response formats are acceptable for maintaining the automated workflow
    * Enable streaming of all agent reasoning, tool calls, and decision-making process.
-5. **Agent: Relationship Assignment (lib/agents/relationshipAssigner.ts):**
-   * Create a Mastra agent that analyzes temporal relationships between events.
+4. **Agent: Relationship Assignment (lib/agents/relationshipAssigner.ts):**
+   * Create an AI agent that analyzes temporal relationships between events.
    * **Technical Orchestrator-Agent Interaction Flow:**
      1. **Post-detection processing:** After the event detection agent has completed processing the entire novel, this agent begins relationship analysis
      2. **Event retrieval and ordering:** The orchestrator retrieves all detected events from the database, sorted by charStart position (chronological order in the text)
@@ -127,23 +121,45 @@ Follow these phases in strict order. Each phase builds upon the previous one.
      - **createRelationship(fromEventId, toEventId, relationshipType)**: Creates BEFORE, AFTER, or CONCURRENT relationships between events
    * Enable streaming of relationship analysis thinking and tool usage.
 
-## **Phase 3: Chat-Based Frontend Interface**
+## **Phase 3: Real-time Streaming & API Routes**
 
-**Objective:** Build a Next.js frontend with a chat interface that displays real-time agent interactions using Mastra's streaming capabilities.
+**Objective:** Create Next.js API routes that collects and streams all agent messages to display real-time agent interactions in a chat interface on a web frontend.
+
+**Instructions:**
+
+1. **Develop streaming system**
+   * Create an adapter that captures all messages sent and received by agents into a single stream
+   * Transform streaming data into chat message format with agent names and message types. Agents are:
+     * **Orchestrator**: Workflow coordination messages and text chunk assignments.
+     * **Event Detector**: Event analysis, "no event found" responses, and `createEventNode` tool calls.
+     * **Relationship Detector**: Relationship analysis and `createRelationship` tool calls.
+   * Handle different event types: agent messages, tool calls, thinking blocks, and errors.
+
+2. **API Routes:**
+   * **POST /api/upload:** Handle .docx and .txt file uploads, store in /data directory, return file metadata.
+   * **POST /api/process:** Endpoint that triggers the agent orchestrator to start and returns a streaming response.
+   * **GET /api/events:** Query Neo4j for event data and relationships (for final graph visualization).
+
+3. **Frontend Integration Support:**
+   * Stream data structure includes agent identification, message content, tool calls, and thinking blocks.
+   * leverage `@ai-sdk` if possible for this solution
+
+## **Phase 4: Chat-Based Frontend Interface**
+
+**Objective:** Build a Next.js frontend with a chat interface that displays real-time agent interactions.
 
 **Instructions:**
 
 1. **File Upload Interface (components/FileUpload.tsx):**
    * Create a drag-and-drop file upload component using Tailwind CSS.
    * Support .docx and .txt file uploads with visual feedback.
-   * Display "Start Processing" button after successful file upload.
+   * Display "Start" button after successful file upload.
    * Handle upload state and error messaging.
 
 2. **Chat Interface (components/ChatInterface.tsx):**
-   * Build a chat window that appears when "Start Processing" button is clicked.
+   * Build a chat window that appears when "Start" button is clicked.
    * Implement chat bubbles for each agent message with distinct styling.
    * Auto-scroll to follow latest messages during processing.
-   * Show processing status and completion indicators.
 
 3. **Agent Message Components:**
    * **Agent Identifier (components/AgentBubble.tsx):**
@@ -157,58 +173,23 @@ Follow these phases in strict order. Each phase builds upon the previous one.
      * Display agent reasoning/thinking in expandable/collapsible format.
      * Use different styling to distinguish from regular messages.
 
-4. **Main Application Layout (app/page.tsx):**
+4. **Streaming Integration Hook**
+   * Create React hook that consumes our streaming response
+   * Handle different message types: agent messages, tool calls, thinking blocks, errors.
+   * Manage connection state and error handling automatically.
+   * Parse streaming data to extract agent names and message content.
+
+5. **Main Application Layout (app/page.tsx):**
    * Two-phase interface: File upload view → Chat interface view.
    * Simple state management to switch between upload and chat modes.
-   * Display processing completion and option to view results.
-   * Prepare layout structure for future API integration.
+   * Display processing status and completion indicators.
+   * Option to view final event graph after processing completes.
 
-5. **Styling and UX:**
+6. **Styling and UX:**
    * Use Tailwind CSS for consistent styling across all components.
    * Implement responsive design optimized for chat interface.
    * Add loading animations and processing indicators.
    * Clear visual hierarchy for different message types and agents.
-
-## **Phase 4: API Integration & Real-time Streaming**
-
-**Objective:** Create Next.js API routes that integrate with the frontend to provide real-time agent interactions and complete the functional application.
-
-**Instructions:**
-
-1. **API Routes:**
-   * **POST /api/upload:** Handle .docx and .txt file uploads, store in /data directory, return file metadata.
-   * **POST /api/process:** Endpoint that triggers the Mastra workflow and returns a streaming response.
-     * Use Mastra's `agent.streamVNext()` with `format: 'aisdk'` for Next.js compatibility.
-     * Return `stream.toUIMessageStreamResponse()` for direct frontend consumption.
-     * Configure streaming callbacks to capture agent names, tool calls, and thinking blocks.
-   * **GET /api/events:** Query Neo4j for event data and relationships (for future graph visualization).
-
-2. **Mastra Streaming Integration (lib/services/streamingAdapter.ts):**
-   * Create an adapter that captures Mastra's native streaming events using `onStepFinish`, `onChunk`, `onError`, `onAbort` callbacks.
-   * Transform Mastra's streaming data into chat message format with agent names and message types.
-   * Handle different event types: agent messages, tool calls, thinking blocks, and errors.
-   * Use Mastra's built-in streaming instead of custom logging services.
-
-3. **Chat Message Formatting:**
-   * Leverage Mastra's streaming callbacks to automatically format messages by agent:
-     * **Orchestrator**: Workflow coordination messages and text chunk assignments.
-     * **Event Detector**: Event analysis, "no event found" responses, and `createEventNode` tool calls.
-     * **Relationship Detector**: Relationship analysis and `createRelationship` tool calls.
-   * Use Mastra's built-in tool call streaming to automatically display tool executions with parameters and results.
-   * Capture thinking blocks from agents that support reasoning display.
-
-4. **Frontend Integration Hook (hooks/useMastraStream.ts):**
-   * Create React hook that consumes Mastra's streaming response from `/api/process`.
-   * Handle different message types: agent messages, tool calls, thinking blocks, errors.
-   * Manage connection state and error handling automatically.
-   * Parse streaming data to extract agent names and message content.
-   * Integrate with existing ChatInterface component from Phase 3.
-
-5. **Complete Integration:**
-   * Connect FileUpload component to `/api/upload` endpoint.
-   * Connect ChatInterface component to streaming hook and `/api/process` endpoint.
-   * Implement proper error handling and loading states throughout the application.
-   * Test complete workflow: file upload → processing trigger → real-time chat updates → completion.
 
 ## **Phase 5: Neo4j Visualization & Split-Screen Interface**
 
