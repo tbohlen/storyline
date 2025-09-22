@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_ENV=development next dev",
+    "dev:logs": "NODE_ENV=development LOG_LEVEL=debug next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -11,7 +12,8 @@
     "neo4j:stop": "neo4j stop",
     "neo4j:status": "neo4j status",
     "neo4j:console": "neo4j console",
-    "dev:full": "npm run neo4j:start && npm run dev"
+    "dev:full": "npm run neo4j:start && npm run dev",
+    "dev:full:logs": "npm run neo4j:start && npm run dev:logs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
@@ -49,6 +51,7 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.1",
+    "pino-pretty": "^12.0.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"

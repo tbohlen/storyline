@@ -1,9 +1,9 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import path from 'path';
-import pino from 'pino';
+import { loggers } from '../utils/logger';
 
-const logger = pino({ name: 'file-parser' });
+const logger = loggers.fileParser;
 
 /**
  * Interface for TSV event data

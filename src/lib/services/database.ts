@@ -1,8 +1,8 @@
 import neo4j, { Driver, Session, Result } from 'neo4j-driver';
 import { getConfig } from './config';
-import pino from 'pino';
+import { loggers } from '../utils/logger';
 
-const logger = pino({ name: 'database-service' });
+const logger = loggers.database;
 
 let driver: Driver | null = null;
 
@@ -27,9 +27,9 @@ export function getDriver(): Driver {
         }
       );
 
-      logger.info('Neo4j driver initialized', { uri: config.neo4j.uri });
+      logger.info(`Neo4j driver initialized - uri: ${config.neo4j.uri}`);
     } catch (error) {
-      logger.error('Failed to initialize Neo4j driver', { error });
+      logger.error(`Failed to initialize Neo4j driver: ${error}`);
       throw new Error(`Failed to initialize Neo4j driver: ${error}`);
     }
   }
@@ -59,7 +59,7 @@ export async function testConnection(): Promise<boolean> {
       return false;
     }
   } catch (error) {
-    logger.error('Neo4j database connection test failed', { error });
+    logger.error(`Neo4j database connection test failed: ${error}`);
     return false;
   } finally {
     if (session) {
@@ -90,12 +90,12 @@ export async function executeQuery(
   const session = createSession();
 
   try {
-    logger.debug('Executing Cypher query', { cypher, parameters });
+    logger.debug(`Executing Cypher query: ${cypher} with parameters: ${JSON.stringify(parameters)}`);
     const result = await session.run(cypher, parameters);
-    logger.debug('Query executed successfully', { recordCount: result.records.length });
+    logger.debug(`Query executed successfully - recordCount: ${result.records.length}`);
     return result;
   } catch (error) {
-    logger.error('Failed to execute Cypher query', { cypher, parameters, error });
+    logger.error(`Failed to execute Cypher query: ${cypher} with parameters: ${JSON.stringify(parameters)} - error: ${error}`);
     throw error;
   } finally {
     await session.close();
@@ -113,7 +113,7 @@ export async function closeDriver(): Promise<void> {
       driver = null;
       logger.info('Neo4j driver closed successfully');
     } catch (error) {
-      logger.error('Error closing Neo4j driver', { error });
+      logger.error(`Error closing Neo4j driver: ${error}`);
       throw error;
     }
   }
@@ -149,7 +149,7 @@ export async function initializeDatabase(): Promise<void> {
 
     logger.info('Database schema initialization completed');
   } catch (error) {
-    logger.error('Failed to initialize database schema', { error });
+    logger.error(`Failed to initialize database schema: ${error}`);
     throw new Error(`Database initialization failed: ${error}`);
   }
 }
@@ -171,7 +171,7 @@ export async function clearDatabase(): Promise<void> {
 
     logger.info('Database cleared successfully');
   } catch (error) {
-    logger.error('Failed to clear database', { error });
+    logger.error(`Failed to clear database: ${error}`);
     throw error;
   }
 }
