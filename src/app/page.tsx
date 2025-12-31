@@ -32,7 +32,7 @@ export default function HomePage() {
           {/* Welcome Section */}
           <div className="text-center space-y-4">
             <h2 className="text-4xl font-bold tracking-tight">
-              Analyze Your Novel's Timeline
+              Analyze Your Novel&apos;s Timeline
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Upload your novel and let our AI agents identify significant events,
@@ -59,7 +59,7 @@ export default function HomePage() {
                 <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">
                   2
                 </span>
-                <span>Click "Start Analysis" to begin AI-powered event detection</span>
+                <span>Click &quot;Start Analysis&quot; to begin AI-powered event detection</span>
               </li>
               <li className="flex items-start">
                 <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">

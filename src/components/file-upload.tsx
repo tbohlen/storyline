@@ -12,19 +12,15 @@ interface FileUploadProps {
   className?: string;
 }
 
-type UploadState = 'idle' | 'uploading' | 'uploaded' | 'error';
+type UploadState = 'idle' | 'selected' | 'uploading' | 'starting' | 'error';
 
 export function FileUpload({ onFileUploaded, className }: FileUploadProps) {
   const router = useRouter();
   const [uploadState, setUploadState] = useState<UploadState>('idle');
-  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isStarting, setIsStarting] = useState(false);
 
-  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const processFile = useCallback((file: File) => {
     // Validate file type
     const allowedTypes = ['.docx', '.txt'];
     const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
@@ -35,41 +31,24 @@ export function FileUpload({ onFileUploaded, className }: FileUploadProps) {
       return;
     }
 
-    setUploadState('uploading');
+    // Store file in state, don't upload yet
+    setSelectedFile(file);
+    setUploadState('selected');
     setError(null);
+  }, []);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      setUploadedFile(result.filename);
-      setUploadState('uploaded');
-      onFileUploaded?.(result.filename);
-
-    } catch (error) {
-      console.error('Upload error:', error);
-      setError(error instanceof Error ? error.message : 'Upload failed');
-      setUploadState('error');
-    }
-  }, [onFileUploaded]);
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    processFile(file);
+  }, [processFile]);
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
   }, []);
 
-  const handleDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -78,40 +57,56 @@ export function FileUpload({ onFileUploaded, className }: FileUploadProps) {
 
     if (!file) return;
 
-    // Create a synthetic event to reuse existing logic
-    const syntheticEvent = {
-      target: { files: [file] }
-    } as React.ChangeEvent<HTMLInputElement>;
-
-    await handleFileChange(syntheticEvent);
-  }, [handleFileChange]);
+    processFile(file);
+  }, [processFile]);
 
   const handleStart = async () => {
-    if (!uploadedFile) return;
+    if (!selectedFile) return;
 
-    setIsStarting(true);
+    setUploadState('uploading');
     setError(null);
 
     try {
-      const response = await fetch('/api/process', {
+      // Step 1: Upload the file
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const uploadResponse = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+      }
+
+      const uploadResult = await uploadResponse.json();
+      const filename = uploadResult.filename;
+
+      onFileUploaded?.(filename);
+
+      // Step 2: Start processing
+      setUploadState('starting');
+
+      const processResponse = await fetch('/api/process', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ filename: uploadedFile }),
+        body: JSON.stringify({ filename }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Processing failed: ${response.statusText}`);
+      if (!processResponse.ok) {
+        throw new Error(`Processing failed: ${processResponse.statusText}`);
       }
 
-      // Navigate to observer page
-      router.push('/observer');
+      // Step 3: Navigate to observer page with filename
+      router.push(`/observer?filename=${encodeURIComponent(filename)}`);
 
     } catch (error) {
       console.error('Start processing error:', error);
       setError(error instanceof Error ? error.message : 'Failed to start processing');
-      setIsStarting(false);
+      setUploadState('selected'); // Return to selected state for retry
     }
   };
 
@@ -119,7 +114,9 @@ export function FileUpload({ onFileUploaded, className }: FileUploadProps) {
     switch (uploadState) {
       case 'uploading':
         return <Loader2 className="h-8 w-8 animate-spin text-blue-500" />;
-      case 'uploaded':
+      case 'starting':
+        return <Loader2 className="h-8 w-8 animate-spin text-purple-500" />;
+      case 'selected':
         return <CheckCircle className="h-8 w-8 text-green-500" />;
       case 'error':
         return <AlertCircle className="h-8 w-8 text-red-500" />;
@@ -132,10 +129,12 @@ export function FileUpload({ onFileUploaded, className }: FileUploadProps) {
     switch (uploadState) {
       case 'uploading':
         return 'Uploading file...';
-      case 'uploaded':
-        return `File uploaded: ${uploadedFile}`;
+      case 'starting':
+        return 'Starting analysis...';
+      case 'selected':
+        return `File selected: ${selectedFile?.name}`;
       case 'error':
-        return error || 'Upload failed';
+        return error || 'Selection failed';
       default:
         return 'Click to select a file or drag and drop';
     }
@@ -157,7 +156,8 @@ export function FileUpload({ onFileUploaded, className }: FileUploadProps) {
             'border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer',
             uploadState === 'idle' && 'border-gray-300 hover:border-gray-400',
             uploadState === 'uploading' && 'border-blue-300 bg-blue-50',
-            uploadState === 'uploaded' && 'border-green-300 bg-green-50',
+            uploadState === 'starting' && 'border-purple-300 bg-purple-50',
+            uploadState === 'selected' && 'border-green-300 bg-green-50',
             uploadState === 'error' && 'border-red-300 bg-red-50'
           )}
         >
@@ -167,16 +167,13 @@ export function FileUpload({ onFileUploaded, className }: FileUploadProps) {
             onChange={handleFileChange}
             className="hidden"
             id="file-upload"
-            disabled={uploadState === 'uploading' || isStarting}
+            disabled={uploadState === 'uploading' || uploadState === 'starting'}
           />
           <label htmlFor="file-upload" className="cursor-pointer block">
             <div className="flex flex-col items-center space-y-4">
               {getStateIcon()}
               <div>
                 <p className="text-lg font-medium">{getStateText()}</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Supported formats: .docx, .txt
-                </p>
               </div>
             </div>
           </label>
@@ -191,39 +188,37 @@ export function FileUpload({ onFileUploaded, className }: FileUploadProps) {
           </div>
         )}
 
-        {uploadedFile && (
+        {selectedFile && uploadState === 'selected' && (
           <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <File className="h-4 w-4 text-green-600 mr-2" />
                 <span className="text-sm font-medium text-green-700">
-                  Ready to process: {uploadedFile}
+                  Ready to process: {selectedFile.name}
                 </span>
               </div>
               <Button
                 onClick={handleStart}
-                disabled={isStarting}
+                disabled={false}
                 size="sm"
                 className="bg-green-600 hover:bg-green-700"
               >
-                {isStarting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Starting...
-                  </>
-                ) : (
-                  'Start Analysis'
-                )}
+                Start Analysis
               </Button>
             </div>
           </div>
         )}
 
-        <div className="text-xs text-gray-500 space-y-1">
-          <p>• The novel will be analyzed for significant events and timeline inconsistencies</p>
-          <p>• Processing may take several minutes depending on file size</p>
-          <p>• You'll be redirected to the observer page to watch the analysis in real-time</p>
-        </div>
+        {(uploadState === 'uploading' || uploadState === 'starting') && (
+          <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
+            <div className="flex items-center">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600 mr-2" />
+              <span className="text-sm font-medium text-blue-700">
+                {uploadState === 'uploading' ? 'Uploading file...' : 'Starting analysis...'}
+              </span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

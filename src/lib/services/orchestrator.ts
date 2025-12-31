@@ -1,10 +1,24 @@
 import { NovelReader } from './novelReader';
 import { EventDetectorAgent } from '../agents/eventDetector';
 import { initializeDatabase } from './database';
-import path from 'path';
 import { loggers } from '../utils/logger';
 
 const logger = loggers.orchestrator;
+
+// Import SSE emitter function
+let emitOrchestratorMessage: ((filename: string, message: any) => void) | null = null;
+
+// Dynamic import to avoid circular dependency issues
+const initializeSSE = async () => {
+  if (!emitOrchestratorMessage) {
+    try {
+      const sseModule = await import('../../app/api/stream/route');
+      emitOrchestratorMessage = sseModule.emitOrchestratorMessage;
+    } catch (error) {
+      logger.error('Failed to import SSE emitter', { error });
+    }
+  }
+};
 
 /**
  * Configuration for the orchestrator
@@ -52,6 +66,7 @@ export class Orchestrator {
   private eventDetector: EventDetectorAgent;
   private config: OrchestratorConfig;
   private stats: ProcessingStats;
+  private filename: string;
 
   /**
    * Creates a new Orchestrator instance
@@ -69,6 +84,7 @@ export class Orchestrator {
     // Initialize services
     this.novelReader = new NovelReader(novelPath);
     this.eventDetector = new EventDetectorAgent(this.novelReader.getFilename());
+    this.filename = this.novelReader.getFilename();
 
     // Initialize stats
     this.stats = {
@@ -82,6 +98,27 @@ export class Orchestrator {
     };
 
     logger.info(`Orchestrator created - novelPath: ${novelPath}, spreadsheetPath: ${spreadsheetPath}, config: ${JSON.stringify(this.config)}`);
+
+    // Initialize SSE
+    initializeSSE();
+  }
+
+  /**
+   * Emits a message to the SSE stream
+   * @param {string} type - Message type
+   * @param {string} agent - Agent name
+   * @param {string} message - Message content
+   * @param {any} data - Optional additional data
+   */
+  private emitMessage(type: string, agent: string, message: string, data?: any) {
+    if (emitOrchestratorMessage) {
+      emitOrchestratorMessage(this.filename, {
+        type,
+        agent,
+        message,
+        data
+      });
+    }
   }
 
   /**
@@ -90,26 +127,37 @@ export class Orchestrator {
    */
   async initialize(): Promise<void> {
     try {
+      this.emitMessage('status', 'orchestrator', 'Initializing orchestrator services...');
       logger.info('Initializing orchestrator services');
 
       // Initialize database schema
+      this.emitMessage('status', 'orchestrator', 'Setting up database schema...');
       await initializeDatabase();
       logger.info('Database initialized');
 
       // Load the novel
+      this.emitMessage('status', 'orchestrator', `Loading novel: ${this.filename}`);
       await this.novelReader.loadNovel();
       this.stats.totalCharacters = this.novelReader.getContentLength();
       logger.info(`Novel loaded - filename: ${this.novelReader.getFilename()}, totalCharacters: ${this.stats.totalCharacters}`);
 
       // Initialize event detector with master events
+      this.emitMessage('status', 'orchestrator', 'Initializing Event Detector agent...');
       await this.eventDetector.initialize(this.spreadsheetPath);
       logger.info('Event detector initialized');
 
+      this.emitMessage('success', 'orchestrator', 'Orchestrator initialization complete', {
+        totalCharacters: this.stats.totalCharacters,
+        chunkSize: this.config.chunkSize,
+        overlapSize: this.config.overlapSize
+      });
       logger.info('Orchestrator initialization complete');
 
     } catch (error) {
+      const errorMessage = `Initialization failed: ${error}`;
+      this.emitMessage('error', 'orchestrator', errorMessage, { error: String(error) });
       logger.error(`Failed to initialize orchestrator: ${error}`);
-      this.stats.errors.push(`Initialization failed: ${error}`);
+      this.stats.errors.push(errorMessage);
       throw new Error(`Orchestrator initialization failed: ${error}`);
     }
   }
@@ -130,6 +178,11 @@ export class Orchestrator {
       this.stats.eventsFound = 0;
       this.stats.errors = [];
 
+      this.emitMessage('status', 'orchestrator', `Starting novel analysis - ${this.stats.totalCharacters} characters`, {
+        totalCharacters: this.stats.totalCharacters,
+        chunkSize: this.config.chunkSize,
+        overlapSize: this.config.overlapSize
+      });
       logger.info(`Starting novel processing - totalCharacters: ${this.stats.totalCharacters}, chunkSize: ${this.config.chunkSize}, overlapSize: ${this.config.overlapSize}`);
 
       // Reset reader position
@@ -140,6 +193,10 @@ export class Orchestrator {
           await this.processNextChunk();
         } catch (error) {
           const errorMsg = `Failed to process chunk at position ${this.novelReader.getCurrentPosition()}: ${error}`;
+          this.emitMessage('error', 'orchestrator', errorMsg, {
+            position: this.novelReader.getCurrentPosition(),
+            error: String(error)
+          });
           logger.error(errorMsg);
           this.stats.errors.push(errorMsg);
 
@@ -157,13 +214,23 @@ export class Orchestrator {
       this.stats.progress = 100;
 
       const duration = this.stats.endTime.getTime() - this.stats.startTime!.getTime();
+      const finalStats = { ...this.stats };
+
+      this.emitMessage('completed', 'orchestrator', `Novel analysis complete!`, {
+        chunksProcessed: this.stats.chunksProcessed,
+        eventsFound: this.stats.eventsFound,
+        errors: this.stats.errors.length,
+        duration: duration,
+        finalStats
+      });
       logger.info(`Novel processing complete - chunksProcessed: ${this.stats.chunksProcessed}, eventsFound: ${this.stats.eventsFound}, errors: ${this.stats.errors.length}, duration: ${duration}ms`);
 
-      return { ...this.stats };
+      return finalStats;
 
     } catch (error) {
       this.stats.processing = false;
       this.stats.endTime = new Date();
+      this.emitMessage('error', 'orchestrator', `Novel processing failed: ${error}`, { error: String(error) });
       logger.error(`Novel processing failed: ${error}`);
       this.stats.errors.push(`Processing failed: ${error}`);
       throw error;
@@ -184,9 +251,25 @@ export class Orchestrator {
     );
 
     const chunkNumber = this.stats.chunksProcessed + 1;
+    const preview = chunkData.text.substring(0, 100).replace(/\n/g, ' ') + '...';
+
+    this.emitMessage('processing', 'orchestrator', `Processing chunk ${chunkNumber}`, {
+      chunkNumber,
+      chunkStart: chunkData.actualStart,
+      chunkEnd: chunkData.actualEnd,
+      chunkLength: chunkData.text.length,
+      preview,
+      progress: this.novelReader.getProgress()
+    });
+
     logger.debug(`Processing chunk ${chunkNumber} - actualStart: ${chunkData.actualStart}, actualEnd: ${chunkData.actualEnd}, chunkLength: ${chunkData.text.length}`);
 
     // Analyze chunk for events
+    this.emitMessage('analyzing', 'event-detector', `Analyzing chunk ${chunkNumber} for events`, {
+      chunkLength: chunkData.text.length,
+      preview
+    });
+
     const result = await this.eventDetector.simpleAnalysis(
       chunkData.text,
       chunkData.actualStart
@@ -194,6 +277,7 @@ export class Orchestrator {
 
     // Handle agent response
     if (result === "no event found") {
+      this.emitMessage('result', 'event-detector', `No events found in chunk ${chunkNumber}`);
       logger.debug(`No events found in chunk ${this.stats.chunksProcessed + 1}`);
 
       // Advance position by chunk size minus overlap
@@ -205,13 +289,21 @@ export class Orchestrator {
 
     } else {
       const resultPreview = result.substring(0, 100) + '...';
-      logger.info(`Events found in chunk ${this.stats.chunksProcessed + 1} - result: ${resultPreview}`);
 
       // Count events found (simple parsing of the result string)
       const eventCountMatch = result.match(/Found (\d+) event/);
-      if (eventCountMatch) {
-        this.stats.eventsFound += parseInt(eventCountMatch[1]);
+      const eventCount = eventCountMatch ? parseInt(eventCountMatch[1]) : 0;
+
+      if (eventCount > 0) {
+        this.stats.eventsFound += eventCount;
+        this.emitMessage('event_found', 'event-detector', `Found ${eventCount} event(s) in chunk ${chunkNumber}`, {
+          eventCount,
+          chunkNumber,
+          result: resultPreview
+        });
       }
+
+      logger.info(`Events found in chunk ${this.stats.chunksProcessed + 1} - result: ${resultPreview}`);
 
       // Advance position to end of processed chunk
       this.novelReader.setPosition(chunkData.actualEnd);
@@ -221,6 +313,14 @@ export class Orchestrator {
     this.stats.chunksProcessed++;
     this.stats.currentPosition = this.novelReader.getCurrentPosition();
     this.stats.progress = this.novelReader.getProgress();
+
+    // Emit progress update
+    this.emitMessage('progress', 'orchestrator', `Chunk ${chunkNumber} processed`, {
+      chunksProcessed: this.stats.chunksProcessed,
+      eventsFound: this.stats.eventsFound,
+      progress: this.stats.progress,
+      currentPosition: this.stats.currentPosition
+    });
 
     logger.debug(`Chunk processing complete - chunksProcessed: ${this.stats.chunksProcessed}, progress: ${this.stats.progress}%, currentPosition: ${this.stats.currentPosition}`);
   }
