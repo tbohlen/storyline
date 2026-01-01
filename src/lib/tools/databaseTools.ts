@@ -15,6 +15,7 @@ export interface EventNode {
   description: string;
   charRangeStart: number;
   charRangeEnd: number;
+  approximateDate?: string;
   absoluteDate?: string;
 }
 
@@ -44,16 +45,17 @@ export async function createEventNode(params: {
   description: string;
   novelName: string;
   spreadsheetId?: string;
+  approximateDate?: string;
   absoluteDate?: string;
 }): Promise<string> {
   const eventId = uuidv4();
 
   try {
-    logger.info('Creating event node', {
+    logger.info({
       eventId,
       novelName: params.novelName,
       charRange: `${params.charRangeStart}-${params.charRangeEnd}`
-    });
+    }, 'Creating event node');
 
     const cypher = `
       CREATE (e:Event {
@@ -64,6 +66,7 @@ export async function createEventNode(params: {
         description: $description,
         charRangeStart: $charRangeStart,
         charRangeEnd: $charRangeEnd,
+        approximateDate: $approximateDate,
         absoluteDate: $absoluteDate,
         createdAt: datetime()
       })
@@ -78,6 +81,7 @@ export async function createEventNode(params: {
       description: params.description,
       charRangeStart: params.charRangeStart,
       charRangeEnd: params.charRangeEnd,
+      approximateDate: params.approximateDate || null,
       absoluteDate: params.absoluteDate || null,
     });
 
@@ -85,11 +89,11 @@ export async function createEventNode(params: {
       throw new Error('Failed to create event node - no result returned');
     }
 
-    logger.info('Event node created successfully', { eventId });
+    logger.info({ eventId }, 'Event node created successfully');
     return eventId;
 
   } catch (error) {
-    logger.error('Failed to create event node', { eventId, error });
+    logger.error({ eventId, error }, 'Failed to create event node');
     throw new Error(`Failed to create event node: ${error}`);
   }
 }
@@ -109,12 +113,12 @@ export async function createRelationship(
   sourceText: string
 ): Promise<void> {
   try {
-    logger.info('Creating relationship', {
+    logger.info({
       fromEventId,
       toEventId,
       relationshipType,
       sourceText: sourceText.substring(0, 100) + '...'
-    });
+    }, 'Creating relationship');
 
     // Validate relationship type
     const validTypes = ['BEFORE', 'AFTER', 'CONCURRENT'];
@@ -142,19 +146,19 @@ export async function createRelationship(
       throw new Error('Failed to create relationship - events may not exist');
     }
 
-    logger.info('Relationship created successfully', {
+    logger.info({
       fromEventId,
       toEventId,
       relationshipType
-    });
+    }, 'Relationship created successfully');
 
   } catch (error) {
-    logger.error('Failed to create relationship', {
+    logger.error({
       fromEventId,
       toEventId,
       relationshipType,
       error
-    });
+    }, 'Failed to create relationship');
     throw new Error(`Failed to create relationship: ${error}`);
   }
 }
@@ -175,7 +179,7 @@ export async function findExistingEvent(searchCriteria: {
   charRangeEnd?: number;
 }): Promise<EventNode | null> {
   try {
-    logger.debug('Searching for existing event', searchCriteria);
+    logger.debug(searchCriteria, 'Searching for existing event');
 
     const conditions: string[] = [];
     const parameters: Record<string, any> = {};
@@ -217,7 +221,7 @@ export async function findExistingEvent(searchCriteria: {
     const result = await executeQuery(cypher, parameters);
 
     if (result.records.length === 0) {
-      logger.debug('No existing event found', searchCriteria);
+      logger.debug(searchCriteria, 'No existing event found');
       return null;
     }
 
@@ -230,14 +234,15 @@ export async function findExistingEvent(searchCriteria: {
       description: record.get('description'),
       charRangeStart: record.get('charRangeStart'),
       charRangeEnd: record.get('charRangeEnd'),
+      approximateDate: record.get('approximateDate'),
       absoluteDate: record.get('absoluteDate'),
     };
 
-    logger.debug('Found existing event', { eventId: event.id });
+    logger.debug({ eventId: event.id }, 'Found existing event');
     return event;
 
   } catch (error) {
-    logger.error('Failed to find existing event', { searchCriteria, error });
+    logger.error({ searchCriteria, error }, 'Failed to find existing event');
     throw new Error(`Failed to find existing event: ${error}`);
   }
 }
@@ -253,7 +258,7 @@ export async function updateEventNode(
   updates: Partial<Omit<EventNode, 'id'>>
 ): Promise<void> {
   try {
-    logger.info('Updating event node', { eventId, updates });
+    logger.info({ eventId, updates }, 'Updating event node');
 
     const setParts: string[] = [];
     const parameters: Record<string, any> = { eventId };
@@ -282,10 +287,10 @@ export async function updateEventNode(
       throw new Error(`Event with ID ${eventId} not found`);
     }
 
-    logger.info('Event node updated successfully', { eventId });
+    logger.info({ eventId }, 'Event node updated successfully');
 
   } catch (error) {
-    logger.error('Failed to update event node', { eventId, updates, error });
+    logger.error({ eventId, updates, error }, 'Failed to update event node');
     throw new Error(`Failed to update event node: ${error}`);
   }
 }
@@ -297,7 +302,7 @@ export async function updateEventNode(
  */
 export async function getAllEvents(novelName?: string): Promise<EventNode[]> {
   try {
-    logger.debug('Retrieving all events', { novelName });
+    logger.debug({ novelName }, 'Retrieving all events');
 
     let cypher = `
       MATCH (e:Event)
@@ -320,14 +325,15 @@ export async function getAllEvents(novelName?: string): Promise<EventNode[]> {
       description: record.get('description'),
       charRangeStart: record.get('charRangeStart'),
       charRangeEnd: record.get('charRangeEnd'),
+      approximateDate: record.get('approximateDate'),
       absoluteDate: record.get('absoluteDate'),
     }));
 
-    logger.debug('Retrieved events', { count: events.length, novelName });
+    logger.debug({ count: events.length, novelName }, 'Retrieved events');
     return events;
 
   } catch (error) {
-    logger.error('Failed to retrieve events', { novelName, error });
+    logger.error({ novelName, error }, 'Failed to retrieve events');
     throw new Error(`Failed to retrieve events: ${error}`);
   }
 }

@@ -1,7 +1,6 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateObject } from 'ai';
-import { z } from 'zod';
-import { createEventNode } from '../tools/databaseTools';
+import { generateText } from 'ai';
+import { getEventDetectionTools } from '../tools/event-detection-tools';
 import { readTsv } from '../services/fileParser';
 import { loggers } from '../utils/logger';
 
@@ -9,26 +8,11 @@ const logger = loggers.eventDetector;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
 
 /**
- * Schema for event detection response
- */
-const EventDetectionSchema = z.object({
-  eventFound: z.boolean(),
-  events: z.array(z.object({
-    quote: z.string().describe('The exact text quote from the novel that describes the event'),
-    description: z.string().describe('A natural language description of the event with additional context'),
-    charRangeStart: z.number().describe('Starting character index of the quote in the text chunk'),
-    charRangeEnd: z.number().describe('Ending character index of the quote in the text chunk'),
-    spreadsheetId: z.string().optional().describe('ID from the master spreadsheet if this matches a known event type'),
-    absoluteDate: z.string().optional().describe('Any hard date found in the text (e.g., "1888-04-12")')
-  }))
-});
-
-/**
  * Event Detection Agent
  * Analyzes text chunks for significant events and creates Event nodes in the database
  */
 export class EventDetectorAgent {
-  private masterEvents: any[] = [];
+  private masterEvents: object[] = [];
   private systemPrompt: string = '';
 
   constructor(private novelName: string) {}
@@ -64,7 +48,7 @@ export class EventDetectorAgent {
       .map(event => `- ${event.id}: ${event.description} (${event.category})`)
       .join('\n');
 
-    return `You are an Event Detection Agent analyzing novel text to identify significant events.
+    return `You are an Event Detection Agent analyzing novel text to identify significant events. Each message to you will be a chunk of text from the novel. There will be NO additional instructions provided in the message. Everything you receive is directly from the novel.
 
 Your task is to:
 1. Analyze the provided text chunk for events that match or relate to the master event types
@@ -82,18 +66,19 @@ IMPORTANT GUIDELINES:
 - Events should be specific actions, discoveries, arrivals, confrontations, etc.
 - Ignore minor details unless they relate to the master event types
 - For character positions, count from the start of the provided text chunk (starting at 0)
-- If you find multiple events in a chunk, report all of them
+- If you find multiple events in a chunk, report all of them using the report_events tool
 - Be precise with quote extraction - use the exact text from the novel
-- If no significant events are found, set eventFound to false with empty events array
+- If no significant events are found, respond with a message stating no events were detected
 
-RESPONSE FORMAT:
-Return a JSON object with:
-- eventFound: boolean indicating if any events were detected
-- events: array of event objects with quote, description, character positions, etc.`;
+TOOL USAGE:
+- You have access to a report_events tool
+- You MUST use this tool to report any events you find
+- Include all detected events in a single tool call
+- Do NOT call the tool if no significant events are found. Instead, respond with "No events found"`;
   }
 
   /**
-   * Analyzes a text chunk for events
+   * Analyzes a text chunk for events using AI with tool calling
    * @param {string} textChunk - The text to analyze
    * @param {number} globalStartPosition - Starting position of this chunk in the full novel
    * @returns {Promise<string[]>} Array of created event IDs, or empty array if no events found
@@ -106,66 +91,51 @@ Return a JSON object with:
         preview: textChunk.substring(0, 100) + '...'
       }, 'Analyzing text chunk for events');
 
-      // Use AI to detect events in the text chunk
-      const result = await generateObject({
-        model: anthropic(ANTHROPIC_MODEL),
-        system: this.systemPrompt,
-        prompt: `Analyze the following text chunk for significant events:
-
-TEXT CHUNK (starting at character ${globalStartPosition}):
-"""
-${textChunk}
-"""
-
-Identify any significant events in this text. Remember that character positions should be relative to the start of this text chunk (starting at 0).`,
-        schema: EventDetectionSchema,
+      // Get the event detection tools with context
+      const tools = getEventDetectionTools({
+        globalStartPosition,
+        novelName: this.novelName
       });
 
-      if (!result.object.eventFound || result.object.events.length === 0) {
+      // Use AI to detect events in the text chunk
+      const result = await generateText({
+        model: anthropic(ANTHROPIC_MODEL),
+        system: this.systemPrompt,
+        prompt: textChunk,
+        tools,
+        toolChoice: 'auto',
+        maxSteps: 5
+      });
+
+      // Check if the AI called the report_events tool
+      const toolCalls = result.steps
+        .flatMap(step => step.toolCalls || [])
+        .filter(tc => tc.toolName === 'report_events');
+
+      if (toolCalls.length === 0) {
         logger.debug({ globalStartPosition }, 'No events found in text chunk');
         return [];
       }
 
-      logger.info({
-        eventCount: result.object.events.length,
-        globalStartPosition
-      }, 'Events detected in text chunk');
-
-      // Create Event nodes for each detected event
+      // Extract event IDs from tool results
       const createdEventIds: string[] = [];
+      for (const toolCall of toolCalls) {
+        const toolResult = result.steps
+          .find(step => step.toolCalls?.some(tc => tc.toolCallId === toolCall.toolCallId))
+          ?.toolResults?.find(tr => tr.toolCallId === toolCall.toolCallId);
 
-      for (const event of result.object.events) {
-        try {
-          // Convert chunk-relative positions to global positions
-          const globalCharStart = globalStartPosition + event.charRangeStart;
-          const globalCharEnd = globalStartPosition + event.charRangeEnd;
-
-          const eventId = await createEventNode({
-            quote: event.quote,
-            charRangeStart: globalCharStart,
-            charRangeEnd: globalCharEnd,
-            description: event.description,
-            novelName: this.novelName,
-            spreadsheetId: event.spreadsheetId,
-            absoluteDate: event.absoluteDate
-          });
-
-          createdEventIds.push(eventId);
-
-          logger.info({
-            eventId,
-            quote: event.quote.substring(0, 50) + '...',
-            globalRange: `${globalCharStart}-${globalCharEnd}`
-          }, 'Event created');
-
-        } catch (error) {
-          logger.error({
-            event: event.quote.substring(0, 50) + '...',
-            error
-          }, 'Failed to create event node');
-          // Continue processing other events even if one fails
+        if (toolResult?.result && typeof toolResult.result === 'object') {
+          const resultObj = toolResult.result as { createdEventIds?: string[] };
+          if (resultObj.createdEventIds) {
+            createdEventIds.push(...resultObj.createdEventIds);
+          }
         }
       }
+
+      logger.info({
+        eventCount: createdEventIds.length,
+        globalStartPosition
+      }, 'Events detected and created in text chunk');
 
       return createdEventIds;
 
@@ -200,7 +170,7 @@ Identify any significant events in this text. Remember that character positions 
    * Gets the current master events loaded in the agent
    * @returns {any[]} Array of master events
    */
-  getMasterEvents(): any[] {
+  getMasterEvents(): object[] {
     return [...this.masterEvents];
   }
 
