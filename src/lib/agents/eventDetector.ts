@@ -14,7 +14,7 @@ const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
  * Analyzes text chunks for significant events and creates Event nodes in the database
  */
 export class EventDetectorAgent {
-  private masterEvents: object[] = [];
+  private masterEvents: any[] = [];
   private systemPrompt: string = '';
 
   constructor(private novelName: string) {}
@@ -47,8 +47,8 @@ export class EventDetectorAgent {
    */
   private buildSystemPrompt(): string {
     const eventsList = this.masterEvents
-      .map(event => `- ${event.id}: ${event.description} (${event.category})`)
-      .join('\n');
+      .map((event) => `- ${event.id}: ${event.description} (${event.category})`)
+      .join("\n");
 
     return `You are an Event Detection Agent analyzing novel text to identify significant events. Each message to you will be a chunk of text from the novel. There will be NO additional instructions provided in the message. Everything you receive is directly from the novel.
 
@@ -172,7 +172,7 @@ TOOL USAGE:
    * Gets the current master events loaded in the agent
    * @returns {any[]} Array of master events
    */
-  getMasterEvents(): object[] {
+  getMasterEvents(): any[] {
     return [...this.masterEvents];
   }
 

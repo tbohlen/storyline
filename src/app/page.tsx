@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import { FileUpload } from "@/components/file-upload";
 

@@ -1,7 +1,8 @@
-"use client";
+"use client"
 
 import { useSearchParams } from 'next/navigation';
 import { OrchestratorObserver } from '@/components/orchestrator-observer';
+import { GraphVisualization } from '@/components/graph-visualization';
 import { Suspense } from 'react';
 
 /**
@@ -44,9 +45,17 @@ function ObserverContent() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6">
-        <OrchestratorObserver filename={filename} className="h-full" />
+      {/* Main Content - Two Panel Layout */}
+      <main className="flex-1 flex gap-4 container mx-auto px-4 py-6">
+        {/* Graph Panel: 70% */}
+        <div className="flex-[7] min-w-0">
+          <GraphVisualization filename={filename} className="h-full" />
+        </div>
+
+        {/* Observer Panel: 30% */}
+        <div className="flex-[3] min-w-0">
+          <OrchestratorObserver filename={filename} className="h-full" />
+        </div>
       </main>
     </div>
   );

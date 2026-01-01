@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-"use client";
+"use client"
 
 import { useChat } from "@ai-sdk/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";

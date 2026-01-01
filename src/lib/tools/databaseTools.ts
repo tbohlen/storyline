@@ -214,7 +214,7 @@ export async function findExistingEvent(searchCriteria: {
       RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.novelName as novelName,
              e.quote as quote, e.description as description,
              e.charRangeStart as charRangeStart, e.charRangeEnd as charRangeEnd,
-             e.absoluteDate as absoluteDate
+             e.approximateDate as approximateDate, e.absoluteDate as absoluteDate
       LIMIT 1
     `;
 
@@ -310,7 +310,7 @@ export async function getAllEvents(novelName?: string): Promise<EventNode[]> {
       RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.novelName as novelName,
              e.quote as quote, e.description as description,
              e.charRangeStart as charRangeStart, e.charRangeEnd as charRangeEnd,
-             e.absoluteDate as absoluteDate
+             e.approximateDate as approximateDate, e.absoluteDate as absoluteDate
       ORDER BY e.charRangeStart ASC
     `;
 
