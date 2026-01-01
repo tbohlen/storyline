@@ -1,5 +1,5 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateObject, generateText } from 'ai';
+import { generateObject } from 'ai';
 import { z } from 'zod';
 import { createEventNode } from '../tools/databaseTools';
 import { readTsv } from '../services/fileParser';

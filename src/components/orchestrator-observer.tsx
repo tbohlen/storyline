@@ -58,7 +58,10 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
         const message: OrchestratorMessage = JSON.parse(event.data);
         console.log('SSE message received:', message);
 
-        setMessages(prev => [...prev, message]);
+        // Filter out keep-alive pings
+        if (message.type !== 'ping') {
+          setMessages(prev => [...prev, message]);
+        }
       } catch (error) {
         console.error('Failed to parse SSE message:', error, event.data);
       }
