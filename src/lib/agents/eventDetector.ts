@@ -7,6 +7,8 @@ import { loggers } from '../utils/logger';
 const logger = loggers.eventDetector;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
 
+//TODO: Restructure to create one event at a time, directly using databaseTools (but remember to add zod documentation to databaseTools)
+
 /**
  * Event Detection Agent
  * Analyzes text chunks for significant events and creates Event nodes in the database
