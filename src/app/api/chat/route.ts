@@ -1,6 +1,8 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText } from "ai";
 
+const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
+
 /**
  * Chat API endpoint that streams responses from Anthropic Claude
  * Handles POST requests with messages and sessionId, returns streaming text responses
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
 
     // Stream the response from Anthropic Claude
     const result = await streamText({
-      model: anthropic("claude-3-5-sonnet-20241022"),
+      model: anthropic(ANTHROPIC_MODEL),
       messages,
       system: prompt,
       tools: {},

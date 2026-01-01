@@ -6,6 +6,7 @@ import { readTsv } from '../services/fileParser';
 import { loggers } from '../utils/logger';
 
 const logger = loggers.eventDetector;
+const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
 
 /**
  * Schema for event detection response
@@ -38,7 +39,7 @@ export class EventDetectorAgent {
    */
   async initialize(spreadsheetPath: string): Promise<void> {
     try {
-      logger.info('Initializing Event Detector Agent', { spreadsheetPath, novelName: this.novelName });
+      logger.info({ spreadsheetPath, novelName: this.novelName }, 'Initializing Event Detector Agent');
 
       // Load master events from spreadsheet
       this.masterEvents = await readTsv(spreadsheetPath);
@@ -46,12 +47,10 @@ export class EventDetectorAgent {
       // Build system prompt with event types context
       this.systemPrompt = this.buildSystemPrompt();
 
-      logger.info('Event Detector Agent initialized', {
-        masterEventCount: this.masterEvents.length
-      });
+      logger.info({ masterEventCount: this.masterEvents.length }, 'Event Detector Agent initialized');
 
     } catch (error) {
-      logger.error('Failed to initialize Event Detector Agent', { error });
+      logger.error({ error }, 'Failed to initialize Event Detector Agent');
       throw new Error(`Failed to initialize Event Detector Agent: ${error}`);
     }
   }
@@ -101,15 +100,15 @@ Return a JSON object with:
    */
   async analyzeTextChunk(textChunk: string, globalStartPosition: number): Promise<string[]> {
     try {
-      logger.debug('Analyzing text chunk for events', {
+      logger.debug({
         chunkLength: textChunk.length,
         globalStartPosition,
         preview: textChunk.substring(0, 100) + '...'
-      });
+      }, 'Analyzing text chunk for events');
 
       // Use AI to detect events in the text chunk
       const result = await generateObject({
-        model: anthropic('claude-3-5-sonnet-20241022'),
+        model: anthropic(ANTHROPIC_MODEL),
         system: this.systemPrompt,
         prompt: `Analyze the following text chunk for significant events:
 
@@ -123,14 +122,14 @@ Identify any significant events in this text. Remember that character positions 
       });
 
       if (!result.object.eventFound || result.object.events.length === 0) {
-        logger.debug('No events found in text chunk', { globalStartPosition });
+        logger.debug({ globalStartPosition }, 'No events found in text chunk');
         return [];
       }
 
-      logger.info('Events detected in text chunk', {
+      logger.info({
         eventCount: result.object.events.length,
         globalStartPosition
-      });
+      }, 'Events detected in text chunk');
 
       // Create Event nodes for each detected event
       const createdEventIds: string[] = [];
@@ -153,17 +152,17 @@ Identify any significant events in this text. Remember that character positions 
 
           createdEventIds.push(eventId);
 
-          logger.info('Event created', {
+          logger.info({
             eventId,
             quote: event.quote.substring(0, 50) + '...',
             globalRange: `${globalCharStart}-${globalCharEnd}`
-          });
+          }, 'Event created');
 
         } catch (error) {
-          logger.error('Failed to create event node', {
+          logger.error({
             event: event.quote.substring(0, 50) + '...',
             error
-          });
+          }, 'Failed to create event node');
           // Continue processing other events even if one fails
         }
       }
@@ -171,11 +170,11 @@ Identify any significant events in this text. Remember that character positions 
       return createdEventIds;
 
     } catch (error) {
-      logger.error('Failed to analyze text chunk', {
+      logger.error({
         chunkLength: textChunk.length,
         globalStartPosition,
         error
-      });
+      }, 'Failed to analyze text chunk');
       throw new Error(`Failed to analyze text chunk: ${error}`);
     }
   }

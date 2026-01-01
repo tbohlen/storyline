@@ -205,9 +205,29 @@ export class NovelReader {
     actualStart: number;
     actualEnd: number;
   } {
+    // If we're at or past the end, return empty chunk
+    if (startChar >= this.content.length) {
+      return {
+        text: '',
+        actualStart: this.content.length,
+        actualEnd: this.content.length
+      };
+    }
+
     const idealEnd = startChar + size;
     const cleanStart = this.findWordBoundary(startChar, false);
     const cleanEnd = this.findWordBoundary(Math.min(idealEnd, this.content.length), true);
+
+    // Handle edge case where word boundaries create invalid range
+    // This can happen at the very end of content
+    if (cleanStart >= cleanEnd) {
+      // Just return remaining content from startChar to end
+      return {
+        text: this.content.slice(startChar),
+        actualStart: startChar,
+        actualEnd: this.content.length
+      };
+    }
 
     return {
       text: this.getTextChunk(cleanStart, cleanEnd),

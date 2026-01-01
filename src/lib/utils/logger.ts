@@ -1,4 +1,5 @@
 import pino from 'pino';
+import pretty from 'pino-pretty';
 
 /**
  * Creates a configured pino logger instance
@@ -16,18 +17,18 @@ export function createLogger(name: string): pino.Logger {
     level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
   };
 
-  // In development, use pino-pretty for readable console output
+  // In development, use pino-pretty stream (no worker threads)
+  // This avoids Next.js bundling issues with worker threads
   if (isDevelopment) {
-    loggerConfig.transport = {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        translateTime: 'HH:MM:ss',
-        ignore: 'pid,hostname',
-        messageFormat: '[{name}] {msg}',
-        levelFirst: true,
-      }
-    };
+    const prettyStream = pretty({
+      colorize: true,
+      translateTime: 'HH:MM:ss',
+      ignore: 'pid,hostname',
+      messageFormat: '[{name}] {msg}',
+      levelFirst: true,
+    });
+
+    return pino(loggerConfig, prettyStream);
   }
 
   return pino(loggerConfig);

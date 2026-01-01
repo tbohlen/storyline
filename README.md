@@ -2,6 +2,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+You must have a neo4j instance running. Start it with `neo4j start` if installed locally.
+
 First, run the development server:
 
 ```bash
