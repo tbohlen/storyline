@@ -6,7 +6,17 @@ import { loggers } from '../utils/logger';
 const logger = loggers.orchestrator;
 
 // Import SSE emitter function
-let emitOrchestratorMessage: ((filename: string, message: any) => void) | null = null;
+let emitOrchestratorMessage:
+  | ((
+      filename: string,
+      message: {
+        type: string;
+        agent: string;
+        message: string;
+        data?: object;
+      }
+    ) => void)
+  | null = null;
 
 // Dynamic import to avoid circular dependency issues
 const initializeSSE = async () => {
@@ -15,7 +25,9 @@ const initializeSSE = async () => {
       const sseModule = await import('../../app/api/stream/route');
       emitOrchestratorMessage = sseModule.emitOrchestratorMessage;
     } catch (error) {
-      logger.error('Failed to import SSE emitter', { error });
+      logger.error("Failed to import SSE emitter", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 };
@@ -116,7 +128,7 @@ export class Orchestrator {
         type,
         agent,
         message,
-        data
+        data,
       });
     }
   }

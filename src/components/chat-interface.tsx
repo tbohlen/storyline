@@ -10,10 +10,6 @@ import { ChatInputBar } from "./chat-input-bar";
 import { ChatMessageDisplayer } from "./chat-message-displayer";
 import { useClientStore } from "@/lib/store/client-store";
 import { createToolHandlers } from "@/lib/utils/client-tool-handlers";
-import { DeliverableToolCall } from "@/lib/tools/deliverable-tools";
-import { StakeholderToolCall } from "@/lib/tools/stakeholder-tools";
-import { WorkflowStepToolCall } from "@/lib/tools/workflow-step-tools";
-import { AnnotationToolCall } from "@/lib/tools/annotation-tools";
 
 /**
  * Main chat interface component that handles the chat conversation flow
@@ -22,12 +18,6 @@ import { AnnotationToolCall } from "@/lib/tools/annotation-tools";
 export function ChatInterface() {
   const { 
     setSessionId, 
-    setDeliverable, 
-    setStakeholders,
-    setGoals,
-    setQuestions,
-    setWorkflowStep,
-    setAnnotations
   } = useClientStore();
   
   // Generate a stable sessionId for this chat session
@@ -43,15 +33,8 @@ export function ChatInterface() {
 
   // Create extensible tool handlers
   const toolHandlers = useMemo(() => ({
-    ...createToolHandlers({ 
-      setDeliverable, 
-      setStakeholders,
-      setGoals,
-      setQuestions,
-      setWorkflowStep,
-      setAnnotations
-    }),
-  }), [setDeliverable, setStakeholders, setGoals, setQuestions, setWorkflowStep, setAnnotations]);
+    ...createToolHandlers({}),
+  }), []);
 
   const handleToolCall = useCallback(({toolCall}: {toolCall: DeliverableToolCall | StakeholderToolCall | WorkflowStepToolCall | AnnotationToolCall}) => {
     const handler = toolHandlers[toolCall.toolName];

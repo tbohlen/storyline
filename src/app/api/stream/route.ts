@@ -47,14 +47,14 @@ export async function GET(request: NextRequest) {
     return new Response('Missing filename parameter', { status: 400 });
   }
 
-  logger.info('SSE connection requested', { filename });
+  logger.info({ filename }, 'SSE connection requested');
 
   const encoder = new TextEncoder();
 
   // Create SSE stream
   const stream = new ReadableStream({
     start(controller) {
-      logger.info('SSE stream started', { filename });
+      logger.info({ filename }, 'SSE stream started');
 
       // Add this controller to the connections map
       if (!sseConnections.has(filename)) {
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
           encoder.encode(`data: ${JSON.stringify(initialMessage)}\n\n`)
         );
       } catch (error) {
-        logger.error('Failed to send initial SSE message', { filename, error });
+        logger.error({ filename, error }, 'Failed to send initial SSE message');
       }
 
       // Listen for orchestrator events for this filename
@@ -92,9 +92,9 @@ export async function GET(request: NextRequest) {
             encoder.encode(`data: ${JSON.stringify(sseMessage)}\n\n`)
           );
 
-          logger.debug('SSE message sent', { filename, type: message.type });
+          logger.debug({ filename, type: message.type }, 'SSE message sent');
         } catch (error) {
-          logger.error('Failed to send SSE message', { filename, error });
+          logger.error({ filename, error }, 'Failed to send SSE message');
           // If stream is closed, clean up
           cleanup();
         }
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
       // Cleanup function
       const cleanup = () => {
-        logger.info('SSE stream cleanup', { filename });
+        logger.info({ filename }, 'SSE stream cleanup');
 
         // Remove from connections map
         const connections = sseConnections.get(filename);
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
     },
 
     cancel() {
-      logger.info('SSE stream cancelled', { filename });
+      logger.info({ filename }, 'SSE stream cancelled');
     }
   });
 
@@ -173,9 +173,13 @@ export function emitOrchestratorMessage(filename: string, message: {
   type: string;
   agent: string;
   message: string;
-  data?: any;
+  data?: object;
 }) {
-  logger.debug('Emitting orchestrator message', { filename, type: message.type, agent: message.agent });
+  logger.debug({
+    filename,
+    type: message.type,
+    agent: message.agent,
+  }, "Emitting orchestrator message");
   orchestratorEvents.emit(filename, message);
 }
 
@@ -203,5 +207,5 @@ export function closeConnections(filename: string) {
     sseConnections.delete(filename);
   }
   orchestratorEvents.removeAllListeners(filename);
-  logger.info('Closed all SSE connections', { filename });
+  logger.info({ filename }, 'Closed all SSE connections');
 }
