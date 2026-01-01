@@ -13,7 +13,7 @@ let emitOrchestratorMessage:
         type: string;
         agent: string;
         message: string;
-        data?: object;
+        data?: Record<string, unknown>;
       }
     ) => void)
   | null = null;
@@ -120,9 +120,9 @@ export class Orchestrator {
    * @param {string} type - Message type
    * @param {string} agent - Agent name
    * @param {string} message - Message content
-   * @param {any} data - Optional additional data
+   * @param {Record<string, unknown>} data - Optional additional data
    */
-  private emitMessage(type: string, agent: string, message: string, data?: any) {
+  private emitMessage(type: string, agent: string, message: string, data?: Record<string, unknown>): void {
     if (emitOrchestratorMessage) {
       emitOrchestratorMessage(this.filename, {
         type,
@@ -190,12 +190,19 @@ export class Orchestrator {
       this.stats.eventsFound = 0;
       this.stats.errors = [];
 
-      this.emitMessage('status', 'orchestrator', `Starting novel analysis - ${this.stats.totalCharacters} characters`, {
-        totalCharacters: this.stats.totalCharacters,
-        chunkSize: this.config.chunkSize,
-        overlapSize: this.config.overlapSize
-      });
-      logger.info(`Starting novel processing - totalCharacters: ${this.stats.totalCharacters}, chunkSize: ${this.config.chunkSize}, overlapSize: ${this.config.overlapSize}`);
+      this.emitMessage(
+        "status",
+        "orchestrator",
+        `Starting novel analysis - ${this.stats.totalCharacters} characters`,
+        {
+          totalCharacters: this.stats.totalCharacters,
+          chunkSize: this.config.chunkSize,
+          overlapSize: this.config.overlapSize,
+        }
+      );
+      logger.info(
+        `Starting novel processing - totalCharacters: ${this.stats.totalCharacters}, chunkSize: ${this.config.chunkSize}, overlapSize: ${this.config.overlapSize}`
+      );
 
       // Reset reader position
       this.novelReader.setPosition(0);
@@ -205,9 +212,9 @@ export class Orchestrator {
           await this.processNextChunk();
         } catch (error) {
           const errorMsg = `Failed to process chunk at position ${this.novelReader.getCurrentPosition()}: ${error}`;
-          this.emitMessage('error', 'orchestrator', errorMsg, {
+          this.emitMessage("error", "orchestrator", errorMsg, {
             position: this.novelReader.getCurrentPosition(),
-            error: String(error)
+            error: String(error),
           });
           logger.error(errorMsg);
           this.stats.errors.push(errorMsg);
@@ -250,7 +257,8 @@ export class Orchestrator {
   }
 
   /**
-   * Processes the next text chunk
+   * Find a chunk of text in the novel, then analyze it for events, logging out
+   * the results as we go
    * @returns {Promise<void>}
    */
   private async processNextChunk(): Promise<void> {
@@ -265,22 +273,34 @@ export class Orchestrator {
     const chunkNumber = this.stats.chunksProcessed + 1;
     const preview = chunkData.text.substring(0, 100).replace(/\n/g, ' ') + '...';
 
-    this.emitMessage('processing', 'orchestrator', `Processing chunk ${chunkNumber}`, {
-      chunkNumber,
-      chunkStart: chunkData.actualStart,
-      chunkEnd: chunkData.actualEnd,
-      chunkLength: chunkData.text.length,
-      preview,
-      progress: this.novelReader.getProgress()
-    });
+    this.emitMessage(
+      "processing",
+      "orchestrator",
+      `Processing chunk ${chunkNumber}`,
+      {
+        chunkNumber,
+        chunkStart: chunkData.actualStart,
+        chunkEnd: chunkData.actualEnd,
+        chunkLength: chunkData.text.length,
+        preview,
+        progress: this.novelReader.getProgress(),
+      }
+    );
 
-    logger.debug(`Processing chunk ${chunkNumber} - actualStart: ${chunkData.actualStart}, actualEnd: ${chunkData.actualEnd}, chunkLength: ${chunkData.text.length}`);
+    logger.debug(
+      `Processing chunk ${chunkNumber} - actualStart: ${chunkData.actualStart}, actualEnd: ${chunkData.actualEnd}, chunkLength: ${chunkData.text.length}`
+    );
 
     // Analyze chunk for events
-    this.emitMessage('analyzing', 'event-detector', `Analyzing chunk ${chunkNumber} for events`, {
-      chunkLength: chunkData.text.length,
-      preview
-    });
+    this.emitMessage(
+      "analyzing",
+      "event-detector",
+      `Analyzing chunk ${chunkNumber} for events`,
+      {
+        chunkLength: chunkData.text.length,
+        preview,
+      }
+    );
 
     const result = await this.eventDetector.simpleAnalysis(
       chunkData.text,
@@ -308,14 +328,23 @@ export class Orchestrator {
 
       if (eventCount > 0) {
         this.stats.eventsFound += eventCount;
-        this.emitMessage('event_found', 'event-detector', `Found ${eventCount} event(s) in chunk ${chunkNumber}`, {
-          eventCount,
-          chunkNumber,
-          result: resultPreview
-        });
+        this.emitMessage(
+          "event_found",
+          "event-detector",
+          `Found ${eventCount} event(s) in chunk ${chunkNumber}`,
+          {
+            eventCount,
+            chunkNumber,
+            result: resultPreview,
+          }
+        );
       }
 
-      logger.info(`Events found in chunk ${this.stats.chunksProcessed + 1} - result: ${resultPreview}`);
+      logger.info(
+        `Events found in chunk ${
+          this.stats.chunksProcessed + 1
+        } - result: ${resultPreview}`
+      );
 
       // Advance position to end of processed chunk
       this.novelReader.setPosition(chunkData.actualEnd);
