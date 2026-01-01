@@ -156,6 +156,10 @@ export class Orchestrator {
       // Initialize event detector with master events
       this.emitMessage('status', 'orchestrator', 'Initializing Event Detector agent...');
       await this.eventDetector.initialize(this.spreadsheetPath);
+
+      // Inject the emit function to enable real-time status updates from the agent
+      this.eventDetector.setEmitFunction(this.emitMessage.bind(this));
+
       logger.info('Event detector initialized');
 
       this.emitMessage('success', 'orchestrator', 'Orchestrator initialization complete', {

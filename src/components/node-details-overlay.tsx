@@ -63,7 +63,7 @@ export function NodeDetailsOverlay({ node, onClose }: NodeDetailsOverlayProps) {
               )}
 
               {node.spreadsheetId && (
-                <Badge variant="outline">Type: {node.spreadsheetId}</Badge>
+                <Badge variant="outline">Master Event Id: {node.spreadsheetId}</Badge>
               )}
             </div>
           </div>

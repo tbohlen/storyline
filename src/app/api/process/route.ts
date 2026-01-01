@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     // Store the orchestrator instance
     runningProcesses.set(filename, orchestrator);
 
-    logger.info('Starting orchestrator for file', { filename });
+    logger.info({ filename }, 'Starting orchestrator for file');
 
     // Initialize orchestrator (this loads the novel and prepares agents)
     await orchestrator.initialize();
@@ -82,11 +82,11 @@ export async function POST(request: NextRequest) {
     // Start processing in the background (don't await)
     orchestrator.processNovel()
       .then((finalStats) => {
-        logger.info('Processing completed for file', { filename, finalStats });
+        logger.info({ filename, finalStats }, 'Processing completed for file');
         // Keep the orchestrator around for status queries
       })
       .catch((error) => {
-        logger.error('Processing failed for file', { filename, error });
+        logger.error({ filename, error }, 'Processing failed for file');
         // Keep the orchestrator around so we can see the error in stats
       });
 
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.error('Process start error', { error });
+    logger.error({ error }, 'Process start error');
 
     return NextResponse.json(
       {
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.error('Process status error', { error });
+    logger.error({ error }, 'Process status error');
 
     return NextResponse.json(
       {
@@ -202,7 +202,7 @@ export async function DELETE(request: NextRequest) {
     // but we can remove it from our tracking
     const finalStats = orchestrator.getStats();
 
-    logger.info('Process cleanup completed for file', { filename });
+    logger.info({ filename }, 'Process cleanup completed for file');
 
     return NextResponse.json({
       success: true,
@@ -212,7 +212,7 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.error('Process cleanup error', { error });
+    logger.error({ error }, 'Process cleanup error');
 
     return NextResponse.json(
       {

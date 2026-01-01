@@ -1,21 +1,10 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import path from 'path';
+import { parse } from 'csv-parse/sync';
 import { loggers } from '../utils/logger';
 
 const logger = loggers.fileParser;
-
-/**
- * Interface for TSV event data
- */
-export interface SpreadsheetEvent {
-  id?: string;
-  description?: string;
-  category?: string;
-  book?: string;
-  chapter?: string;
-  [key: string]: any; // Allow for additional columns
-}
 
 /**
  * Interface for text chunking options
@@ -43,7 +32,7 @@ export interface TextChunk {
  */
 export async function readDocx(filePath: string): Promise<string> {
   try {
-    logger.info('Reading .docx file', { filePath });
+    logger.info({ filePath }, 'Reading .docx file');
 
     // Check if file exists
     await fs.access(filePath);
@@ -55,20 +44,20 @@ export async function readDocx(filePath: string): Promise<string> {
     const result = await mammoth.extractRawText({ buffer });
 
     if (result.messages && result.messages.length > 0) {
-      logger.warn('Mammoth parsing messages', {
+      logger.warn({
         filePath,
         messages: result.messages.map(m => m.message)
-      });
+      }, 'Mammoth parsing messages');
     }
 
-    logger.info('Successfully extracted text from .docx file', {
+    logger.info({
       filePath,
       textLength: result.value.length
-    });
+    }, 'Successfully extracted text from .docx file');
 
     return result.value;
   } catch (error) {
-    logger.error('Failed to read .docx file', { filePath, error });
+    logger.error({ filePath, error }, 'Failed to read .docx file');
     throw new Error(`Failed to read .docx file "${filePath}": ${error}`);
   }
 }
@@ -81,7 +70,7 @@ export async function readDocx(filePath: string): Promise<string> {
  */
 export async function readTxt(filePath: string): Promise<string> {
   try {
-    logger.info('Reading .txt file', { filePath });
+    logger.info({ filePath }, 'Reading .txt file');
 
     // Check if file exists
     await fs.access(filePath);
@@ -89,27 +78,27 @@ export async function readTxt(filePath: string): Promise<string> {
     // Read the file content
     const content = await fs.readFile(filePath, 'utf-8');
 
-    logger.info('Successfully read .txt file', {
+    logger.info({
       filePath,
       textLength: content.length
-    });
+    }, 'Successfully read .txt file');
 
     return content;
   } catch (error) {
-    logger.error('Failed to read .txt file', { filePath, error });
+    logger.error({ filePath, error }, 'Failed to read .txt file');
     throw new Error(`Failed to read .txt file "${filePath}": ${error}`);
   }
 }
 
 /**
- * Reads a TSV file and returns the data as an array of JSON objects
- * @param {string} filePath - Path to the TSV file
- * @returns {Promise<SpreadsheetEvent[]>} Array of objects representing TSV rows
+ * Reads a CSV file and returns the data as an array of string maps
+ * @param {string} filePath - Path to the CSV file
+ * @returns {Promise<Record<string, string>[]>} Array of objects representing CSV rows with auto-incremented id field
  * @throws {Error} If the file cannot be read or parsed
  */
-export async function readTsv(filePath: string): Promise<SpreadsheetEvent[]> {
+export async function readCsv(filePath: string): Promise<Record<string, string>[]> {
   try {
-    logger.info('Reading TSV file', { filePath });
+    logger.info({ filePath }, 'Reading CSV file');
 
     // Check if file exists
     await fs.access(filePath);
@@ -117,51 +106,31 @@ export async function readTsv(filePath: string): Promise<SpreadsheetEvent[]> {
     // Read the file content
     const content = await fs.readFile(filePath, 'utf-8');
 
-    // Split into lines and filter out empty lines
-    const lines = content.split('\n').filter(line => line.trim().length > 0);
+    // Parse CSV using csv-parse
+    const records = parse(content, {
+      columns: true, // Use first row as headers
+      skip_empty_lines: true,
+      trim: true,
+      relax_column_count: true, // Allow inconsistent column counts
+    }) as Record<string, string>[];
 
-    if (lines.length === 0) {
-      return [];
-    }
+    // Add auto-incrementing id field to each record
+    const recordsWithIds = records.map((record, index) => ({
+      id: String(index + 1),
+      ...record
+    }));
 
-    // Get headers from first line
-    const headers = lines[0].split('\t').map(header => header.trim());
-
-    // Convert remaining lines to objects
-    const events: SpreadsheetEvent[] = lines.slice(1).map((line, index) => {
-      const values = line.split('\t');
-      const event: SpreadsheetEvent = {};
-
-      headers.forEach((header, colIndex) => {
-        const value = values[colIndex] || '';
-        event[header.toLowerCase().trim()] = value.trim();
-      });
-
-      return event;
-    });
-
-    logger.info('Successfully parsed TSV file', {
+    logger.info({
       filePath,
-      rowCount: events.length,
-      columnCount: headers.length
-    });
+      rowCount: recordsWithIds.length,
+      columnCount: Object.keys(recordsWithIds[0] || {}).length
+    }, 'Successfully parsed CSV file');
 
-    return events;
+    return recordsWithIds;
   } catch (error) {
-    logger.error('Failed to read TSV file', { filePath, error });
-    throw new Error(`Failed to read TSV file "${filePath}": ${error}`);
+    logger.error({ filePath, error }, 'Failed to read CSV file');
+    throw new Error(`Failed to read CSV file "${filePath}": ${error}`);
   }
-}
-
-/**
- * Legacy function for backward compatibility with existing code
- * @param {string} filePath - Path to the TSV file
- * @returns {Promise<SpreadsheetEvent[]>} Array of objects representing TSV rows
- * @throws {Error} If the file cannot be read or parsed
- */
-export async function readSpreadsheet(filePath: string): Promise<SpreadsheetEvent[]> {
-  // Delegate to readTsv for backward compatibility
-  return readTsv(filePath);
 }
 
 /**
@@ -206,12 +175,12 @@ export function chunkText(text: string, options: ChunkOptions): TextChunk[] {
     }
   }
 
-  logger.debug('Text chunking completed', {
+  logger.debug({
     originalLength: text.length,
     chunkCount: chunks.length,
     chunkSize: size,
-    overlap
-  });
+    overlap,
+  }, "Text chunking completed");
 
   return chunks;
 }

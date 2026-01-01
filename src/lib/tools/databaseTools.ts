@@ -182,7 +182,7 @@ export async function findExistingEvent(searchCriteria: {
     logger.debug(searchCriteria, 'Searching for existing event');
 
     const conditions: string[] = [];
-    const parameters: Record<string, any> = {};
+    const parameters: Record<string, unknown> = {};
 
     if (searchCriteria.quote) {
       conditions.push('e.quote = $quote');
@@ -261,7 +261,7 @@ export async function updateEventNode(
     logger.info({ eventId, updates }, 'Updating event node');
 
     const setParts: string[] = [];
-    const parameters: Record<string, any> = { eventId };
+    const parameters: Record<string, unknown> = { eventId };
 
     // Build dynamic SET clause
     Object.entries(updates).forEach(([key, value]) => {
@@ -304,7 +304,7 @@ export async function getAllEvents(novelName?: string): Promise<EventNode[]> {
   try {
     logger.debug({ novelName }, 'Retrieving all events');
 
-    let cypher = `
+    const cypher = `
       MATCH (e:Event)
       ${novelName ? 'WHERE e.novelName = $novelName' : ''}
       RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.novelName as novelName,

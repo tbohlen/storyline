@@ -25,18 +25,21 @@ export class NovelReader {
    */
   async loadNovel(): Promise<void> {
     try {
-      logger.info('Loading novel', { filePath: this.filePath });
+      logger.info({ filePath: this.filePath }, 'Loading novel');
 
       this.content = await readFile(this.filePath);
       this.currentPosition = 0;
 
-      logger.info('Novel loaded successfully', {
-        filename: this.filename,
-        contentLength: this.content.length
-      });
+      logger.info(
+        {
+          filename: this.filename,
+          contentLength: this.content.length,
+        },
+        "Novel loaded successfully"
+      );
 
     } catch (error) {
-      logger.error('Failed to load novel', { filePath: this.filePath, error });
+      logger.error({ filePath: this.filePath, error }, 'Failed to load novel');
       throw new Error(`Failed to load novel: ${error}`);
     }
   }
@@ -59,11 +62,11 @@ export class NovelReader {
 
     const chunk = this.content.slice(startChar, endChar);
 
-    logger.debug('Retrieved text chunk', {
+    logger.debug({
       startChar,
       endChar,
       chunkLength: chunk.length
-    });
+    }, 'Retrieved text chunk');
 
     return chunk;
   }
@@ -79,21 +82,21 @@ export class NovelReader {
     }
 
     if (this.currentPosition >= this.content.length) {
-      logger.debug('Reached end of content', {
+      logger.debug({
         currentPosition: this.currentPosition,
         contentLength: this.content.length
-      });
+      }, 'Reached end of content');
       return null;
     }
 
     const endPosition = Math.min(this.currentPosition + size, this.content.length);
     const chunk = this.content.slice(this.currentPosition, endPosition);
 
-    logger.debug('Retrieved next text chunk', {
+    logger.debug({
       currentPosition: this.currentPosition,
       endPosition,
       chunkLength: chunk.length
-    });
+    }, 'Retrieved next text chunk');
 
     // Don't advance position yet - let orchestrator manage this
     return chunk;
@@ -111,10 +114,10 @@ export class NovelReader {
     const oldPosition = this.currentPosition;
     this.currentPosition = newPosition;
 
-    logger.debug('Updated reading position', {
+    logger.debug({
       oldPosition,
       newPosition: this.currentPosition
-    });
+    }, 'Updated reading position');
   }
 
   /**

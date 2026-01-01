@@ -13,7 +13,7 @@ interface OrchestratorMessage {
   message: string;
   timestamp: string;
   filename?: string;
-  data?: any;
+  data?: unknown;
 }
 
 interface OrchestratorObserverProps {

@@ -1,44 +1,70 @@
-import { anthropic } from '@ai-sdk/anthropic';
-import { generateText } from 'ai';
-import { getEventDetectionTools } from '../tools/event-detection-tools';
-import { readTsv } from '../services/fileParser';
-import { loggers } from '../utils/logger';
+import { anthropic } from "@ai-sdk/anthropic";
+import { ToolLoopAgent } from "ai";
+import { createEventTools } from "../tools/event-tools";
+import { readCsv } from "../services/fileParser";
+import { loggers } from "../utils/logger";
 
 const logger = loggers.eventDetector;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
 
-//TODO: Restructure to create one event at a time, directly using databaseTools (but remember to add zod documentation to databaseTools)
-
 /**
  * Event Detection Agent
  * Analyzes text chunks for significant events and creates Event nodes in the database
+ * Also establishes temporal relationships between events
  */
 export class EventDetectorAgent {
-  private masterEvents: any[] = [];
-  private systemPrompt: string = '';
+  private masterEvents: Record<string, string>[] = [];
+  private systemPrompt: string = "";
+  private emitMessage?: (
+    type: string,
+    agent: string,
+    message: string,
+    data?: Record<string, unknown>
+  ) => void;
 
   constructor(private novelName: string) {}
 
   /**
    * Initializes the agent with the master event spreadsheet
-   * @param {string} spreadsheetPath - Path to the TSV file containing master events
+   * @param {string} spreadsheetPath - Path to the CSV file containing master events
    */
   async initialize(spreadsheetPath: string): Promise<void> {
     try {
-      logger.info({ spreadsheetPath, novelName: this.novelName }, 'Initializing Event Detector Agent');
+      logger.info(
+        { spreadsheetPath, novelName: this.novelName },
+        "Initializing Event Detector Agent"
+      );
 
       // Load master events from spreadsheet
-      this.masterEvents = await readTsv(spreadsheetPath);
+      this.masterEvents = await readCsv(spreadsheetPath);
 
       // Build system prompt with event types context
       this.systemPrompt = this.buildSystemPrompt();
 
-      logger.info({ masterEventCount: this.masterEvents.length }, 'Event Detector Agent initialized');
-
+      logger.info(
+        { masterEventCount: this.masterEvents.length },
+        "Event Detector Agent initialized"
+      );
     } catch (error) {
-      logger.error({ error }, 'Failed to initialize Event Detector Agent');
+      logger.error({ error }, "Failed to initialize Event Detector Agent");
       throw new Error(`Failed to initialize Event Detector Agent: ${error}`);
     }
+  }
+
+  /**
+   * Set the message emission function
+   * This is injected by the orchestrator to enable real-time status updates
+   * @param {Function} emitFn - Function to emit messages to SSE stream
+   */
+  setEmitFunction(
+    emitFn: (
+      type: string,
+      agent: string,
+      message: string,
+      data?: Record<string, unknown>
+    ) => void
+  ): void {
+    this.emitMessage = emitFn;
   }
 
   /**
@@ -50,103 +76,213 @@ export class EventDetectorAgent {
       .map((event) => `- ${event.id}: ${event.description} (${event.category})`)
       .join("\n");
 
-    return `You are an Event Detection Agent analyzing novel text to identify significant events. Each message to you will be a chunk of text from the novel. There will be NO additional instructions provided in the message. Everything you receive is directly from the novel.
+    return `You are an Event Detection Agent analyzing novel text to identify significant events and their temporal relationships.
 
-Your task is to:
-1. Analyze the provided text chunk for events that match or relate to the master event types
-2. Extract the exact quote describing each event
-3. Provide additional context and description
-4. Identify character positions within the chunk
-5. Match to master spreadsheet events when possible
-6. Extract any hard dates found in the text
+Each message to you will be a chunk of text from the novel. There will be NO additional instructions provided in the message. Everything you receive is directly from the novel.
 
 MASTER EVENT TYPES:
 ${eventsList}
 
+YOUR TASK:
+1. Identify significant events in the provided text chunk
+2. For each event, use create_event tool with:
+   - Exact quote from the text
+   - Clear description with context
+   - Character positions within THIS chunk (0-based, relative to chunk start)
+   - Master spreadsheet ID if it matches a known type
+   - Any dates found in the text
+
+3. Establish temporal relationships between events:
+   - Between events in THIS chunk (if obvious from the text)
+   - Between events in this chunk and recent events from earlier chunks
+   - Use get_recent_events to find earlier events if you see temporal references
+   - Use create_relationship to establish temporal ordering
+
 IMPORTANT GUIDELINES:
 - Only identify events that are significant to the story timeline
 - Events should be specific actions, discoveries, arrivals, confrontations, etc.
-- Ignore minor details unless they relate to the master event types
-- For character positions, count from the start of the provided text chunk (starting at 0)
-- If you find multiple events in a chunk, report all of them using the report_events tool
-- Be precise with quote extraction - use the exact text from the novel
-- If no significant events are found, respond with a message stating no events were detected
+- Ignore minor details unless they relate to master event types
+- Character positions are relative to the start of THIS chunk (starting at 0)
+- Look for temporal markers: "the next day", "meanwhile", "earlier", dates, "after", "before"
+- If the text references earlier events, use get_recent_events to find them and create relationships
+- Create relationships whenever you can determine temporal ordering from the text
+- If no significant events are found, simply respond with your reasoning
 
-TOOL USAGE:
-- You have access to a report_events tool
-- You MUST use this tool to report any events you find
-- Include all detected events in a single tool call
-- Do NOT call the tool if no significant events are found. Instead, respond with "No events found"`;
+TOOLS AVAILABLE:
+- create_event: Create a new event node
+- create_relationship: Link two events with temporal relationship (BEFORE, AFTER, or CONCURRENT)
+- find_event: Check if an event already exists
+- update_event: Update an existing event's properties
+- get_recent_events: Get recent events from earlier in the novel for cross-chunk relationships
+
+WORKFLOW:
+1. Read and analyze the text chunk carefully
+2. Identify significant events
+3. Create events using create_event tool
+4. Look for temporal relationships within the chunk
+5. If you see references to earlier events (like "the next day after X"), use get_recent_events to find them
+6. Create relationships using create_relationship tool
+7. Think through your analysis step by step and explain your reasoning`;
   }
 
   /**
    * Analyzes a text chunk for events using AI with tool calling
+   * Creates events and relationships in a single pass
    * @param {string} textChunk - The text to analyze
    * @param {number} globalStartPosition - Starting position of this chunk in the full novel
    * @returns {Promise<string[]>} Array of created event IDs, or empty array if no events found
    */
-  async analyzeTextChunk(textChunk: string, globalStartPosition: number): Promise<string[]> {
+  async analyzeTextChunk(
+    textChunk: string,
+    globalStartPosition: number
+  ): Promise<string[]> {
     try {
-      logger.debug({
-        chunkLength: textChunk.length,
-        globalStartPosition,
-        preview: textChunk.substring(0, 100) + '...'
-      }, 'Analyzing text chunk for events');
+      logger.debug(
+        {
+          chunkLength: textChunk.length,
+          globalStartPosition,
+          preview: textChunk.substring(0, 100) + "...",
+        },
+        "Analyzing text chunk for events"
+      );
 
-      // Get the event detection tools with context
-      const tools = getEventDetectionTools({
+      // Emit analyzing message
+      this.emitMessage?.(
+        "analyzing",
+        "event-detector",
+        "Starting chunk analysis",
+        {
+          chunkLength: textChunk.length,
+          globalStartPosition,
+        }
+      );
+
+      // Track created events in this session
+      const recentEventIds: string[] = [];
+
+      // Create tools with context including emit function
+      const tools = createEventTools({
         globalStartPosition,
-        novelName: this.novelName
+        novelName: this.novelName,
+        emitMessage: this.emitMessage || (() => {}),
+        recentEventIds,
       });
 
-      // Use AI to detect events in the text chunk
-      const result = await generateText({
+      // Use AI to detect events and relationships in the text chunk
+      const agent = new ToolLoopAgent({
         model: anthropic(ANTHROPIC_MODEL),
-        system: this.systemPrompt,
-        prompt: textChunk,
+        instructions: this.systemPrompt,
         tools,
-        toolChoice: 'auto',
-        maxSteps: 5
+        maxOutputTokens: 20000, // Allow multiple events and relationships per chunk
+        onStepFinish: ({
+          text,
+          toolCalls,
+          toolResults,
+          finishReason,
+          usage,
+        }) => {
+          // Emit step completion info
+          this.emitMessage?.("step", "event-detector", "Agent step completed", {
+            finishReason,
+            toolCallCount: toolCalls?.length || 0,
+            toolResultCount: toolResults?.length || 0,
+            usage,
+          });
+
+          // Emit each tool call with its arguments
+          toolCalls?.forEach((tc) => {
+            this.emitMessage?.(
+              "tool_call",
+              "event-detector",
+              `Calling ${tc.toolName}`,
+              {
+                toolName: tc.toolName,
+                args: tc.args,
+              }
+            );
+          });
+
+          // Emit AI reasoning/thinking if present
+          if (text && text.trim()) {
+            this.emitMessage?.(
+              "thinking",
+              "event-detector",
+              "Agent reasoning",
+              {
+                content:
+                  text.substring(0, 500) + (text.length > 500 ? "..." : ""),
+              }
+            );
+          }
+        },
       });
 
-      // Check if the AI called the report_events tool
-      const toolCalls = result.steps
-        .flatMap(step => step.toolCalls || [])
-        .filter(tc => tc.toolName === 'report_events');
+      const result = await agent.generate({
+        prompt: textChunk,
+      });
 
-      if (toolCalls.length === 0) {
-        logger.debug({ globalStartPosition }, 'No events found in text chunk');
-        return [];
-      }
-
-      // Extract event IDs from tool results
+      // Extract created event IDs and count relationships from tool results
       const createdEventIds: string[] = [];
-      for (const toolCall of toolCalls) {
-        const toolResult = result.steps
-          .find(step => step.toolCalls?.some(tc => tc.toolCallId === toolCall.toolCallId))
-          ?.toolResults?.find(tr => tr.toolCallId === toolCall.toolCallId);
+      let createdRelationships = 0;
 
-        if (toolResult?.result && typeof toolResult.result === 'object') {
-          const resultObj = toolResult.result as { createdEventIds?: string[] };
-          if (resultObj.createdEventIds) {
-            createdEventIds.push(...resultObj.createdEventIds);
+      for (const toolResult of result.toolResults || []) {
+        if (
+          toolResult.toolName === "create_event" &&
+          typeof toolResult.output === "object" &&
+          toolResult.output !== null
+        ) {
+          const resultObj = toolResult.output as { eventId?: string };
+          if (resultObj.eventId) {
+            createdEventIds.push(resultObj.eventId);
+          }
+        } else if (
+          toolResult.toolName === "create_relationship" &&
+          typeof toolResult.output === "object" &&
+          toolResult.output !== null
+        ) {
+          const resultObj = toolResult.output as { success?: boolean };
+          if (resultObj.success) {
+            createdRelationships++;
           }
         }
       }
 
-      logger.info({
-        eventCount: createdEventIds.length,
-        globalStartPosition
-      }, 'Events detected and created in text chunk');
+      logger.info(
+        {
+          eventCount: createdEventIds.length,
+          relationshipCount: createdRelationships,
+          globalStartPosition,
+        },
+        "Events and relationships detected in text chunk"
+      );
+
+      // Emit final result message
+      this.emitMessage?.(
+        "result",
+        "event-detector",
+        "Chunk analysis complete",
+        {
+          eventCount: createdEventIds.length,
+          relationshipCount: createdRelationships,
+          eventIds: createdEventIds,
+        }
+      );
 
       return createdEventIds;
-
     } catch (error) {
-      logger.error({
-        chunkLength: textChunk.length,
-        globalStartPosition,
-        error
-      }, 'Failed to analyze text chunk');
+      logger.error(
+        {
+          chunkLength: textChunk.length,
+          globalStartPosition,
+          error,
+        },
+        "Failed to analyze text chunk"
+      );
+
+      this.emitMessage?.("error", "event-detector", "Failed to analyze chunk", {
+        error: String(error),
+      });
+
       throw new Error(`Failed to analyze text chunk: ${error}`);
     }
   }
@@ -158,21 +294,27 @@ TOOL USAGE:
    * @param {number} globalStartPosition - Starting position of this chunk in the full novel
    * @returns {Promise<string>} Either "no event found" or information about created events
    */
-  async simpleAnalysis(textChunk: string, globalStartPosition: number): Promise<string> {
-    const eventIds = await this.analyzeTextChunk(textChunk, globalStartPosition);
+  async simpleAnalysis(
+    textChunk: string,
+    globalStartPosition: number
+  ): Promise<string> {
+    const eventIds = await this.analyzeTextChunk(
+      textChunk,
+      globalStartPosition
+    );
 
     if (eventIds.length === 0) {
       return "no event found";
     }
 
-    return `Found ${eventIds.length} event(s). Created event IDs: ${eventIds.join(', ')}`;
+    return `Found ${eventIds.length} event(s). Created event IDs: ${eventIds.join(", ")}`;
   }
 
   /**
    * Gets the current master events loaded in the agent
-   * @returns {any[]} Array of master events
+   * @returns {Record<string, string>[]} Array of master events
    */
-  getMasterEvents(): any[] {
+  getMasterEvents(): Record<string, string>[] {
     return [...this.masterEvents];
   }
 

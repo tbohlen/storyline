@@ -81,7 +81,7 @@ Do NOT call this tool if:
 
 If you find events, you MUST call this tool to report them. Include all events found in a single tool call.`,
 
-    parameters: ReportEventsInputSchema,
+    inputSchema: ReportEventsInputSchema,
 
     execute: async ({ events }) => {
       logger.info({
