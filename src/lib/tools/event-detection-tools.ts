@@ -16,7 +16,8 @@ export const DetectedEventSchema = z.object({
 
   description: z.string()
     .min(10)
-    .describe('A clear, natural language description of the event with additional context about what happened, who was involved, and why it matters to the story.'),
+    .max(200)
+    .describe('A clear, natural language description of the event with additional context about what happened, who was involved, and why it matters to the story. This should be shot so that it can function as a caption or annotation.'),
 
   charRangeStart: z.number()
     .int()

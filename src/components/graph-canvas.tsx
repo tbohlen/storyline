@@ -61,8 +61,10 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
         nodes={nvlNodes}
         rels={nvlRelationships}
         nvlOptions={{
-          layout: 'force',
+          layout: 'd3Force',
           allowDynamicMinZoom: true,
+          disableWebGL: false,
+          instanceId: 'event-graph',
         }}
         mouseEventCallbacks={{
           onNodeClick: (node: any) => {
@@ -71,7 +73,9 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
             if (eventNode) {
               onNodeClick(eventNode);
             }
-          }
+          },
+          onZoom: true, // Enable zoom with mouse wheel / pinch
+          onPan: true, // Enable pan with click-and-drag
         }}
       />
     </div>

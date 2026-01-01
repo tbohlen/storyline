@@ -34,13 +34,19 @@ export function NodeDetailsOverlay({ node, onClose }: NodeDetailsOverlayProps) {
 
           <div className="space-y-3">
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                Description
+              </p>
               <p className="text-sm">{node.description}</p>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Quote</p>
-              <p className="text-sm italic text-muted-foreground">"{node.quote}"</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                Quote
+              </p>
+              <p className="text-sm italic text-muted-foreground">
+                &quot;{node.quote}&quot;
+              </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -49,21 +55,15 @@ export function NodeDetailsOverlay({ node, onClose }: NodeDetailsOverlayProps) {
               </Badge>
 
               {node.approximateDate && (
-                <Badge variant="outline">
-                  ~{node.approximateDate}
-                </Badge>
+                <Badge variant="outline">~{node.approximateDate}</Badge>
               )}
 
               {node.absoluteDate && (
-                <Badge variant="outline">
-                  Date: {node.absoluteDate}
-                </Badge>
+                <Badge variant="outline">Date: {node.absoluteDate}</Badge>
               )}
 
               {node.spreadsheetId && (
-                <Badge variant="outline">
-                  Type: {node.spreadsheetId}
-                </Badge>
+                <Badge variant="outline">Type: {node.spreadsheetId}</Badge>
               )}
             </div>
           </div>
