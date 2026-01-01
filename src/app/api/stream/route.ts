@@ -17,7 +17,7 @@ class OrchestratorEventEmitter {
     }
   }
 
-  on(filename: string, listener: (message: any) => void) {
+  addListener(filename: string, listener: (message: any) => void) {
     if (!this.listeners.has(filename)) {
       this.listeners.set(filename, new Set());
     }
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Listen for orchestrator events for this filename
-      const removeListener = orchestratorEvents.on(filename, (message) => {
+      const removeListener = orchestratorEvents.addListener(filename, (message) => {
         try {
           const sseMessage = {
             ...message,
