@@ -38,12 +38,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the sample spreadsheet for event types
-    const spreadsheetPath = join(dataDir, 'events_spreadsheet.tsv');
+    const spreadsheetPath = join(dataDir, 'event-timeline.csv');
 
     if (!existsSync(spreadsheetPath)) {
       return NextResponse.json(
         {
-          error: 'Events spreadsheet not found. Please ensure events_spreadsheet.tsv exists in the data directory.',
+          error: 'Events spreadsheet not found. Please ensure event-timeline.csv exists in the data directory.',
           hint: 'You may need to create or copy the master events spreadsheet.'
         },
         { status: 404 }
