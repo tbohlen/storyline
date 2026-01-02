@@ -1,5 +1,6 @@
 "use client"
 
+import type { Node as NVLNode } from '@neo4j-nvl/base'
 import { InteractiveNvlWrapper } from '@neo4j-nvl/react';
 import { useGraphStore } from '@/lib/store/graph-store';
 import type { EventNode } from '@/lib/tools/databaseTools';
@@ -69,7 +70,7 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
           instanceId: 'event-graph',
         }}
         mouseEventCallbacks={{
-          onNodeClick: (node: any) => {
+          onNodeClick: (node: NVLNode) => {
             // Find the original Event node using the clicked node's id
             const eventNode = nodes.find(n => n.id === node.id);
             if (eventNode) {

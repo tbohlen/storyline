@@ -16,14 +16,24 @@ export class EventDetectorAgent {
   private masterEvents: Record<string, string>[] = [];
   private masterEventsEnabled: boolean = false;
   private systemPrompt: string = "";
-  private emitMessage?: (
+  private emitMessage: (
     type: string,
     agent: string,
     message: string,
     data?: Record<string, unknown>
   ) => void;
 
-  constructor(private novelName: string) {}
+  constructor(
+    private novelName: string,
+    emitMessage: (
+      type: string,
+      agent: string,
+      message: string,
+      data?: Record<string, unknown>
+    ) => void
+  ) {
+    this.emitMessage = emitMessage;
+  }
 
   /**
    * Initializes the agent with optional master event spreadsheet
@@ -58,22 +68,6 @@ export class EventDetectorAgent {
       logger.error({ error }, "Failed to initialize Event Detector Agent");
       throw new Error(`Failed to initialize Event Detector Agent: ${error}`);
     }
-  }
-
-  /**
-   * Set the message emission function
-   * This is injected by the orchestrator to enable real-time status updates
-   * @param {Function} emitFn - Function to emit messages to SSE stream
-   */
-  setEmitFunction(
-    emitFn: (
-      type: string,
-      agent: string,
-      message: string,
-      data?: Record<string, unknown>
-    ) => void
-  ): void {
-    this.emitMessage = emitFn;
   }
 
   /**
@@ -179,7 +173,7 @@ WORKFLOW:
       );
 
       // Emit analyzing message
-      this.emitMessage?.(
+      this.emitMessage(
         "analyzing",
         "event-detector",
         "Starting chunk analysis",
@@ -196,7 +190,7 @@ WORKFLOW:
       const tools = createEventTools({
         globalStartPosition,
         novelName: this.novelName,
-        emitMessage: this.emitMessage || (() => {}),
+        emitMessage: this.emitMessage,
         recentEventIds,
         masterEventsEnabled: this.masterEventsEnabled,
       });
@@ -215,7 +209,7 @@ WORKFLOW:
           usage,
         }) => {
           // Emit step completion info
-          this.emitMessage?.("step", "event-detector", "Agent step completed", {
+          this.emitMessage("step", "event-detector", "Agent step completed", {
             finishReason,
             toolCallCount: toolCalls?.length || 0,
             toolResultCount: toolResults?.length || 0,
@@ -224,20 +218,20 @@ WORKFLOW:
 
           // Emit each tool call with its arguments
           toolCalls?.forEach((tc) => {
-            this.emitMessage?.(
+            this.emitMessage(
               "tool_call",
               "event-detector",
               `Calling ${tc.toolName}`,
               {
                 toolName: tc.toolName,
-                args: tc.args,
+                args: 'args' in tc ? tc.args : undefined, // TODO: Fix types in a cleaner way?
               }
             );
           });
 
           // Emit AI reasoning/thinking if present
           if (text && text.trim()) {
-            this.emitMessage?.(
+            this.emitMessage(
               "thinking",
               "event-detector",
               "Agent reasoning",
@@ -290,7 +284,7 @@ WORKFLOW:
       );
 
       // Emit final result message
-      this.emitMessage?.(
+      this.emitMessage(
         "result",
         "event-detector",
         "Chunk analysis complete",
@@ -312,7 +306,7 @@ WORKFLOW:
         "Failed to analyze text chunk"
       );
 
-      this.emitMessage?.("error", "event-detector", "Failed to analyze chunk", {
+      this.emitMessage("error", "event-detector", "Failed to analyze chunk", {
         error: String(error),
       });
 

@@ -13,6 +13,7 @@ import {
   getAllEvents,
 } from './databaseTools';
 import { loggers } from '../utils/logger';
+import truncate from '../utils/truncate';
 
 const logger = loggers.database;
 
@@ -26,7 +27,12 @@ export interface EventToolContext {
   /** Name of the novel being processed */
   novelName: string;
   /** Function to emit messages to SSE stream */
-  emitMessage: (type: string, agent: string, message: string, data?: Record<string, unknown>) => void;
+  emitMessage: (
+    type: string,
+    agent: string,
+    message: string,
+    data?: Record<string, unknown>
+  ) => void;
   /** Array to track event IDs created in this session */
   recentEventIds: string[];
   /** Whether master events spreadsheet is enabled */
@@ -38,16 +44,16 @@ export interface EventToolContext {
  * Allows the agent to create a new event node in the database
  */
 function createEventTool(context: EventToolContext) {
-  // Base schema without spreadsheetId
-  const baseSchema = z.object({
+  // Define base object schema fields
+  const baseFields = {
     quote: z.string()
       .min(1)
       .describe('The exact text quote from the novel that describes the event. Must be verbatim from the source text.'),
 
     description: z.string()
-      .min(10)
-      .max(200)
-      .describe('A clear, natural language description of the event with additional context about what happened, who was involved, and why it matters to the story. This should be shot so that it can function as a caption or annotation.'),
+      .min(5)
+      .max(50)
+      .describe('A very succinct, natural language description of the event that allows the reader to quickly identify which event this is without reading the context or quote. This will be used as an annotation on a graph visualization and so should be just a few words long.'),
 
     charRangeStart: z.number()
       .int()
@@ -66,22 +72,26 @@ function createEventTool(context: EventToolContext) {
     absoluteDate: z.string()
       .optional()
       .describe('Any explicit date mentioned in the text (e.g., "1888-04-12", "April 12, 1888"). Use ISO format YYYY-MM-DD when possible. Leave undefined if no specific date is mentioned.')
-  }).refine(
+  };
+
+  // Conditionally add spreadsheetId field if master events are enabled
+  const schemaFields = context.masterEventsEnabled
+    ? {
+        ...baseFields,
+        spreadsheetId: z.string()
+          .optional()
+          .describe('ID from the master event spreadsheet if this event matches a known event type. Leave undefined if no clear match exists.')
+      }
+    : baseFields;
+
+  // Create schema with refinement
+  const schema = z.object(schemaFields).refine(
     (data) => data.charRangeEnd > data.charRangeStart,
     {
       message: "charRangeEnd must be greater than charRangeStart",
       path: ["charRangeEnd"]
     }
   );
-
-  // Extended schema with spreadsheetId (only if master events enabled)
-  const schema = context.masterEventsEnabled
-    ? baseSchema.safeExtend({
-        spreadsheetId: z.string()
-          .optional()
-          .describe('ID from the master event spreadsheet if this event matches a known event type. Leave undefined if no clear match exists.')
-      })
-    : baseSchema;
 
   // Create TypeScript type from schema
   type CreateEventParams = z.infer<typeof schema>;
@@ -103,9 +113,9 @@ Do NOT create events for:
 
     execute: async (params: CreateEventParams) => {
       // Emit tool call message
-      context.emitMessage('tool_call', 'event-detector', 'Creating event', {
-        tool: 'create_event',
-        quote: params.quote.substring(0, 50) + (params.quote.length > 50 ? '...' : ''),
+      context.emitMessage("tool_call", "event-detector", "Creating event", {
+        tool: "create_event",
+        quote: truncate(params.quote, 50),
         charRange: `${params.charRangeStart}-${params.charRangeEnd}`,
       });
 
@@ -185,19 +195,19 @@ function createRelationshipTool(context: EventToolContext) {
 
 Relationship types:
 - BEFORE: fromEvent happens before toEvent
+- AFTER: fromEvent happens after toEvent
 - CONCURRENT: Events happen at the same time
 
 Guidelines:
 - You can create relationships between events you just created or events you find
 - The temporal relationship should be clear from the text
 - You need source text that indicates the relationship
-- Consider both explicit temporal markers ("the next day", "meanwhile") and implicit narrative flow
-- If event A happens after event B, create a BEFORE relationship with B as fromEvent and A as toEvent`,
+- Consider both explicit temporal markers ("the next day", "meanwhile") and implicit narrative flow`,
 
     inputSchema: z.object({
       fromEventId: z.string().describe('ID of the source event'),
       toEventId: z.string().describe('ID of the target event'),
-      relationshipType: z.enum(['BEFORE', 'CONCURRENT']).describe('Type of temporal relationship'),
+      relationshipType: z.enum(['BEFORE', 'AFTER', 'CONCURRENT']).describe('Type of temporal relationship'),
       sourceText: z.string().describe('Text snippet that indicates this relationship'),
     }),
 

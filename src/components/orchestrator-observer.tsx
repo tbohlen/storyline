@@ -7,13 +7,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, CheckCircle, AlertTriangle, Bot, Zap, Database, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface OrchestratorMessage {
-  type: string;
+interface ThinkingData {
+  content: string;
+}
+
+interface Message {
   agent: string;
+  type: "thinking" | "info" | "error" | "success" | "ping";
   message: string;
   timestamp: string;
   filename?: string;
-  data?: unknown;
+  data?: ThinkingData | unknown;
 }
 
 interface OrchestratorObserverProps {
@@ -22,7 +26,7 @@ interface OrchestratorObserverProps {
 }
 
 export function OrchestratorObserver({ filename, className }: OrchestratorObserverProps) {
-  const [messages, setMessages] = useState<OrchestratorMessage[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error' | 'closed'>('connecting');
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -55,7 +59,7 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
 
     eventSource.onmessage = (event) => {
       try {
-        const message: OrchestratorMessage = JSON.parse(event.data);
+        const message: Message = JSON.parse(event.data);
         console.log('SSE message received:', message);
 
         // Filter out keep-alive pings
@@ -215,7 +219,23 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
                     {message.message}
                   </div>
 
-                  {!!message.data && (
+                  {/* Special handling for thinking messages */}
+                  {message.type === "thinking" &&
+                    !!message.data &&
+                    typeof message.data === "object" &&
+                    "content" in message.data && (
+                      <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div className="flex items-start space-x-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-500 mt-0.5 flex-shrink-0" />
+                          <div className="text-sm text-blue-900 dark:text-blue-100 whitespace-pre-wrap">
+                            {(message.data as ThinkingData).content}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Regular data display for non-thinking messages */}
+                  {message.type !== "thinking" && !!message.data && (
                     <div className="mt-2 p-2 bg-muted rounded text-xs font-mono overflow-x-auto">
                       <pre className="whitespace-pre-wrap">
                         {typeof message.data === "object"

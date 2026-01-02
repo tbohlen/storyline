@@ -25,9 +25,9 @@ const initializeSSE = async () => {
       const sseModule = await import('../../app/api/stream/route');
       emitOrchestratorMessage = sseModule.emitOrchestratorMessage;
     } catch (error) {
-      logger.error("Failed to import SSE emitter", {
+      logger.error({
         error: error instanceof Error ? error.message : String(error),
-      });
+      }, "Failed to import SSE emitter");
     }
   }
 };
@@ -95,7 +95,10 @@ export class Orchestrator {
 
     // Initialize services
     this.novelReader = new NovelReader(novelPath);
-    this.eventDetector = new EventDetectorAgent(this.novelReader.getFilename());
+    this.eventDetector = new EventDetectorAgent(
+      this.novelReader.getFilename(),
+      this.emitMessage.bind(this)
+    );
     this.filename = this.novelReader.getFilename();
 
     // Initialize stats
@@ -139,44 +142,48 @@ export class Orchestrator {
    */
   async initialize(): Promise<void> {
     try {
-      this.emitMessage('status', 'orchestrator', 'Initializing orchestrator services...');
-      logger.info('Initializing orchestrator services');
+      this.emitMessage("status", "orchestrator", "Initializing AI...");
+      logger.info("Initializing orchestrator services");
 
       // Initialize database schema
-      this.emitMessage('status', 'orchestrator', 'Setting up database schema...');
       await initializeDatabase();
-      logger.info('Database initialized');
+      logger.info("Database initialized");
 
       // Load the novel
-      this.emitMessage('status', 'orchestrator', `Loading novel: ${this.filename}`);
       await this.novelReader.loadNovel();
       this.stats.totalCharacters = this.novelReader.getContentLength();
-      logger.info(`Novel loaded - filename: ${this.novelReader.getFilename()}, totalCharacters: ${this.stats.totalCharacters}`);
+      logger.info(
+        `Novel loaded - filename: ${this.novelReader.getFilename()}, totalCharacters: ${this.stats.totalCharacters}`
+      );
 
       // Initialize event detector (with or without master events)
-      this.emitMessage('status', 'orchestrator', 'Initializing Event Detector agent...');
-
       if (this.spreadsheetPath) {
         await this.eventDetector.initialize(this.spreadsheetPath);
-        logger.info({ spreadsheetPath: this.spreadsheetPath }, 'Event detector initialized with master events');
+        logger.info(
+          { spreadsheetPath: this.spreadsheetPath },
+          "Event detector initialized with master events"
+        );
       } else {
         await this.eventDetector.initialize();
-        logger.info('Event detector initialized without master events');
+        logger.info("Event detector initialized without master events");
       }
 
-      // Inject the emit function to enable real-time status updates from the agent
-      this.eventDetector.setEmitFunction(this.emitMessage.bind(this));
-
-      this.emitMessage('success', 'orchestrator', 'Orchestrator initialization complete', {
-        totalCharacters: this.stats.totalCharacters,
-        chunkSize: this.config.chunkSize,
-        overlapSize: this.config.overlapSize
-      });
-      logger.info('Orchestrator initialization complete');
-
+      this.emitMessage(
+        "success",
+        "orchestrator",
+        "AI initialization complete",
+        {
+          totalCharacters: this.stats.totalCharacters,
+          chunkSize: this.config.chunkSize,
+          overlapSize: this.config.overlapSize,
+        }
+      );
+      logger.info("Orchestrator initialization complete");
     } catch (error) {
       const errorMessage = `Initialization failed: ${error}`;
-      this.emitMessage('error', 'orchestrator', errorMessage, { error: String(error) });
+      this.emitMessage("error", "orchestrator", errorMessage, {
+        error: String(error),
+      });
       logger.error(`Failed to initialize orchestrator: ${error}`);
       this.stats.errors.push(errorMessage);
       throw new Error(`Orchestrator initialization failed: ${error}`);
@@ -244,13 +251,18 @@ export class Orchestrator {
       const duration = this.stats.endTime.getTime() - this.stats.startTime!.getTime();
       const finalStats = { ...this.stats };
 
-      this.emitMessage('completed', 'orchestrator', `Novel analysis complete!`, {
-        chunksProcessed: this.stats.chunksProcessed,
-        eventsFound: this.stats.eventsFound,
-        errors: this.stats.errors.length,
-        duration: duration,
-        finalStats
-      });
+      this.emitMessage(
+        "completed",
+        "orchestrator",
+        `Novel analysis complete!`,
+        {
+          chunksProcessed: this.stats.chunksProcessed,
+          eventsFound: this.stats.eventsFound,
+          errors: this.stats.errors.length,
+          duration: duration,
+          finalStats,
+        }
+      );
       logger.info(`Novel processing complete - chunksProcessed: ${this.stats.chunksProcessed}, eventsFound: ${this.stats.eventsFound}, errors: ${this.stats.errors.length}, duration: ${duration}ms`);
 
       return finalStats;
@@ -282,20 +294,6 @@ export class Orchestrator {
     const chunkNumber = this.stats.chunksProcessed + 1;
     const preview = chunkData.text.substring(0, 100).replace(/\n/g, ' ') + '...';
 
-    this.emitMessage(
-      "processing",
-      "orchestrator",
-      `Processing chunk ${chunkNumber}`,
-      {
-        chunkNumber,
-        chunkStart: chunkData.actualStart,
-        chunkEnd: chunkData.actualEnd,
-        chunkLength: chunkData.text.length,
-        preview,
-        progress: this.novelReader.getProgress(),
-      }
-    );
-
     logger.debug(
       `Processing chunk ${chunkNumber} - actualStart: ${chunkData.actualStart}, actualEnd: ${chunkData.actualEnd}, chunkLength: ${chunkData.text.length}`
     );
@@ -317,8 +315,13 @@ export class Orchestrator {
     );
 
     // Handle agent response
+    // TODO: Confirm that these no event found and event found parsing logics are correct with our new agent-based approach.
     if (result === "no event found") {
-      this.emitMessage('result', 'event-detector', `No events found in chunk ${chunkNumber}`);
+      this.emitMessage(
+        "result",
+        "event-detector",
+        `No events found in chunk ${chunkNumber}`
+      );
       logger.debug(`No events found in chunk ${this.stats.chunksProcessed + 1}`);
 
       // Advance position by chunk size minus overlap
