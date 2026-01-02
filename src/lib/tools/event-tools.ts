@@ -17,6 +17,64 @@ import truncate from '../utils/truncate';
 
 const logger = loggers.database;
 
+const baseFields = {
+  quote: z.string()
+    .min(1)
+    .describe('The exact text quote from the novel that describes the event. Must be verbatim from the source text.'),
+
+  description: z.string()
+    .min(5)
+    .max(50)
+    .describe('A very succinct, natural language description of the event that allows the reader to quickly identify which event this is without reading the context or quote. This will be used as an annotation on a graph visualization and so should be just a few words long.'),
+
+  charRangeStart: z.number()
+    .int()
+    .nonnegative()
+    .describe('Starting character index of the quote within the provided text chunk. Count from 0 at the beginning of the chunk.'),
+
+  charRangeEnd: z.number()
+    .int()
+    .positive()
+    .describe('Ending character index of the quote within the provided text chunk. Must be greater than charRangeStart.'),
+
+  approximateDate: z.string()
+    .optional()
+    .describe('Any approximate date mentioned in the text or inferred date (e.g., "circa 1888", "late April 1888"). For example, if only a month is provided in the text, but you know what year is being referred to, include the month and the inferred year. Use ISO format YYYY-MM-DD when possible. Leave undefined if no date is mentioned.'),
+
+  absoluteDate: z.string()
+    .optional()
+    .describe('Any explicit date mentioned in the text (e.g., "1888-04-12", "April 12, 1888"). Use ISO format YYYY-MM-DD when possible. Leave undefined if no specific date is mentioned.')
+};
+
+
+// Create two versions, one with spreadsheetId and one without
+const createEventSchema = z
+  .object(baseFields)
+  .refine((data) => data.charRangeEnd > data.charRangeStart, {
+    message: "charRangeEnd must be greater than charRangeStart",
+    path: ["charRangeEnd"],
+  });
+// TODO: Rename spreadsheetId to masterEventId for clarity
+const createEventSchemaWithSpreadsheetId = z
+  .object({
+    ...baseFields,
+    spreadsheetId: z
+      .string()
+      .optional()
+      .describe(
+        "ID from the master event spreadsheet if this event matches a known event type. Leave undefined if no clear match exists."
+      ),
+  })
+  .refine((data) => data.charRangeEnd > data.charRangeStart, {
+    message: "charRangeEnd must be greater than charRangeStart",
+    path: ["charRangeEnd"],
+  });
+
+// Create TypeScript type from schema
+type CreateEventParams = z.infer<
+  typeof createEventSchemaWithSpreadsheetId
+>;
+
 /**
  * Context passed to all event tools
  * Provides access to shared state and functions during event detection
@@ -44,58 +102,6 @@ export interface EventToolContext {
  * Allows the agent to create a new event node in the database
  */
 function createEventTool(context: EventToolContext) {
-  // Define base object schema fields
-  const baseFields = {
-    quote: z.string()
-      .min(1)
-      .describe('The exact text quote from the novel that describes the event. Must be verbatim from the source text.'),
-
-    description: z.string()
-      .min(5)
-      .max(50)
-      .describe('A very succinct, natural language description of the event that allows the reader to quickly identify which event this is without reading the context or quote. This will be used as an annotation on a graph visualization and so should be just a few words long.'),
-
-    charRangeStart: z.number()
-      .int()
-      .nonnegative()
-      .describe('Starting character index of the quote within the provided text chunk. Count from 0 at the beginning of the chunk.'),
-
-    charRangeEnd: z.number()
-      .int()
-      .positive()
-      .describe('Ending character index of the quote within the provided text chunk. Must be greater than charRangeStart.'),
-
-    approximateDate: z.string()
-      .optional()
-      .describe('Any approximate date mentioned in the text or inferred date (e.g., "circa 1888", "late April 1888"). For example, if only a month is provided in the text, but you know what year is being referred to, include the month and the inferred year. Use ISO format YYYY-MM-DD when possible. Leave undefined if no date is mentioned.'),
-
-    absoluteDate: z.string()
-      .optional()
-      .describe('Any explicit date mentioned in the text (e.g., "1888-04-12", "April 12, 1888"). Use ISO format YYYY-MM-DD when possible. Leave undefined if no specific date is mentioned.')
-  };
-
-  // Conditionally add spreadsheetId field if master events are enabled
-  const schemaFields = context.masterEventsEnabled
-    ? {
-        ...baseFields,
-        spreadsheetId: z.string()
-          .optional()
-          .describe('ID from the master event spreadsheet if this event matches a known event type. Leave undefined if no clear match exists.')
-      }
-    : baseFields;
-
-  // Create schema with refinement
-  const schema = z.object(schemaFields).refine(
-    (data) => data.charRangeEnd > data.charRangeStart,
-    {
-      message: "charRangeEnd must be greater than charRangeStart",
-      path: ["charRangeEnd"]
-    }
-  );
-
-  // Create TypeScript type from schema
-  type CreateEventParams = z.infer<typeof schema>;
-
   return tool({
     description: `Create a new event node in the story timeline. Use this when you identify a significant plot point, action, or occurrence in the text.
 
@@ -109,7 +115,10 @@ Do NOT create events for:
 - Character thoughts or internal monologue (unless they result in action)
 - Scene setting or descriptions`,
 
-    inputSchema: schema,
+    // by conditionally using the WithSpreadsheetId schema, we can instruct the model provide or not provide this value
+    inputSchema: context.masterEventsEnabled
+      ? createEventSchemaWithSpreadsheetId
+      : createEventSchema,
 
     execute: async (params: CreateEventParams) => {
       // Emit tool call message
@@ -174,11 +183,16 @@ Do NOT create events for:
           message: `Event created successfully with ID: ${eventId}`,
         };
       } catch (error) {
-        logger.error({ error, params }, 'Failed to create event');
-        context.emitMessage('error', 'event-detector', 'Failed to create event', {
-          tool: 'create_event',
-          error: String(error),
-        });
+        logger.error({ error, params }, "Failed to create event");
+        context.emitMessage(
+          "error",
+          "event-detector",
+          "Failed to create event",
+          {
+            tool: "create_event",
+            error: String(error),
+          }
+        );
         throw error;
       }
     },

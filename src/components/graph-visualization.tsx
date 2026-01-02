@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,7 @@ export function GraphVisualization({ filename, className }: GraphVisualizationPr
   /**
    * Fetch graph data from API
    */
-  const fetchGraphData = async () => {
+  const fetchGraphData = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(
@@ -50,12 +50,12 @@ export function GraphVisualization({ filename, className }: GraphVisualizationPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [filename, setGraphData, setLoading, setError]);
 
   // Fetch graph data on mount
   useEffect(() => {
     fetchGraphData();
-  }, [filename]);
+  }, [fetchGraphData]);
 
   // Listen to SSE stream for updates
   useEffect(() => {
@@ -81,7 +81,7 @@ export function GraphVisualization({ filename, className }: GraphVisualizationPr
     return () => {
       eventSource.close();
     };
-  }, [filename]);
+  }, [fetchGraphData, filename]);
 
   return (
     <Card className={cn('h-full flex flex-col', className)}>

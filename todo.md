@@ -1,0 +1,7 @@
+- [] Clean up the Anlysis progress output to make it more readible
+- [] Allow the user to upload the master events list
+- [] After analysis is complete, offer the user a chat interface to modify the graph
+- [] Make shorter descriptions for nodes for readibility
+- [] order the nodes in some way that makes sense - date or page number
+- [] Differentiate between when something is mentioned in the story and when the referenced event occurs
+- [] Create more cohesive timelines by making sure more events are connected in a single line. This might be doable by moving to chunk requests happening in the agent itself.
