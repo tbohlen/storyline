@@ -14,6 +14,7 @@ const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
  */
 export class EventDetectorAgent {
   private masterEvents: Record<string, string>[] = [];
+  private masterEventsEnabled: boolean = false;
   private systemPrompt: string = "";
   private emitMessage?: (
     type: string,
@@ -25,26 +26,34 @@ export class EventDetectorAgent {
   constructor(private novelName: string) {}
 
   /**
-   * Initializes the agent with the master event spreadsheet
-   * @param {string} spreadsheetPath - Path to the CSV file containing master events
+   * Initializes the agent with optional master event spreadsheet
+   * @param {string} spreadsheetPath - Optional path to the CSV file containing master events
    */
-  async initialize(spreadsheetPath: string): Promise<void> {
+  async initialize(spreadsheetPath?: string): Promise<void> {
     try {
       logger.info(
         { spreadsheetPath, novelName: this.novelName },
         "Initializing Event Detector Agent"
       );
 
-      // Load master events from spreadsheet
-      this.masterEvents = await readCsv(spreadsheetPath);
+      // Load master events from spreadsheet if provided
+      if (spreadsheetPath) {
+        this.masterEvents = await readCsv(spreadsheetPath);
+        this.masterEventsEnabled = true;
+        logger.info(
+          { masterEventCount: this.masterEvents.length },
+          "Master events loaded"
+        );
+      } else {
+        this.masterEvents = [];
+        this.masterEventsEnabled = false;
+        logger.info("Master events disabled");
+      }
 
       // Build system prompt with event types context
       this.systemPrompt = this.buildSystemPrompt();
 
-      logger.info(
-        { masterEventCount: this.masterEvents.length },
-        "Event Detector Agent initialized"
-      );
+      logger.info("Event Detector Agent initialized");
     } catch (error) {
       logger.error({ error }, "Failed to initialize Event Detector Agent");
       throw new Error(`Failed to initialize Event Detector Agent: ${error}`);
@@ -68,28 +77,42 @@ export class EventDetectorAgent {
   }
 
   /**
-   * Builds the system prompt with master event context
+   * Builds the system prompt with optional master event context
    * @returns {string} The system prompt
    */
   private buildSystemPrompt(): string {
-    const eventsList = this.masterEvents
-      .map((event) => `- ${event.id}: ${event.description} (${event.category})`)
-      .join("\n");
-
-    return `You are an Event Detection Agent analyzing novel text to identify significant events and their temporal relationships.
+    let prompt = `You are an Event Detection Agent analyzing novel text to identify significant events and their temporal relationships.
 
 Each message to you will be a chunk of text from the novel. There will be NO additional instructions provided in the message. Everything you receive is directly from the novel.
+`;
 
+    // Only add master events section if enabled
+    if (this.masterEventsEnabled && this.masterEvents.length > 0) {
+      const eventsList = this.masterEvents
+        .map((event) => `- ${event.id}: ${event.description} (${event.category})`)
+        .join("\n");
+
+      prompt += `
 MASTER EVENT TYPES:
 ${eventsList}
+`;
+    }
 
+    prompt += `
 YOUR TASK:
 1. Identify significant events in the provided text chunk
 2. For each event, use create_event tool with:
    - Exact quote from the text
    - Clear description with context
-   - Character positions within THIS chunk (0-based, relative to chunk start)
-   - Master spreadsheet ID if it matches a known type
+   - Character positions within THIS chunk (0-based, relative to chunk start)`;
+
+    // Only mention spreadsheet ID if master events are enabled
+    if (this.masterEventsEnabled) {
+      prompt += `
+   - Master spreadsheet ID if it matches a known type`;
+    }
+
+    prompt += `
    - Any dates found in the text
 
 3. Establish temporal relationships between events:
@@ -100,8 +123,15 @@ YOUR TASK:
 
 IMPORTANT GUIDELINES:
 - Only identify events that are significant to the story timeline
-- Events should be specific actions, discoveries, arrivals, confrontations, etc.
-- Ignore minor details unless they relate to master event types
+- Events should be specific actions, discoveries, arrivals, confrontations, etc.`;
+
+    // Only mention master event types if enabled
+    if (this.masterEventsEnabled) {
+      prompt += `
+- Ignore minor details unless they relate to master event types`;
+    }
+
+    prompt += `
 - Character positions are relative to the start of THIS chunk (starting at 0)
 - Look for temporal markers: "the next day", "meanwhile", "earlier", dates, "after", "before"
 - If the text references earlier events, use get_recent_events to find them and create relationships
@@ -123,6 +153,8 @@ WORKFLOW:
 5. If you see references to earlier events (like "the next day after X"), use get_recent_events to find them
 6. Create relationships using create_relationship tool
 7. Think through your analysis step by step and explain your reasoning`;
+
+    return prompt;
   }
 
   /**
@@ -166,6 +198,7 @@ WORKFLOW:
         novelName: this.novelName,
         emitMessage: this.emitMessage || (() => {}),
         recentEventIds,
+        masterEventsEnabled: this.masterEventsEnabled,
       });
 
       // Use AI to detect events and relationships in the text chunk
@@ -324,5 +357,13 @@ WORKFLOW:
    */
   getNovelName(): string {
     return this.novelName;
+  }
+
+  /**
+   * Checks if master events spreadsheet is enabled
+   * @returns {boolean} True if master events are loaded and enabled
+   */
+  isMasterEventsEnabled(): boolean {
+    return this.masterEventsEnabled;
   }
 }

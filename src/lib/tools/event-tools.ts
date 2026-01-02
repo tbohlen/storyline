@@ -29,51 +29,63 @@ export interface EventToolContext {
   emitMessage: (type: string, agent: string, message: string, data?: Record<string, unknown>) => void;
   /** Array to track event IDs created in this session */
   recentEventIds: string[];
+  /** Whether master events spreadsheet is enabled */
+  masterEventsEnabled: boolean;
 }
 
-export const DetectedEventSchema = z.object({
-  quote: z.string()
-    .min(1)
-    .describe('The exact text quote from the novel that describes the event. Must be verbatim from the source text.'),
-
-  description: z.string()
-    .min(10)
-    .max(200)
-    .describe('A clear, natural language description of the event with additional context about what happened, who was involved, and why it matters to the story. This should be shot so that it can function as a caption or annotation.'),
-
-  charRangeStart: z.number()
-    .int()
-    .nonnegative()
-    .describe('Starting character index of the quote within the provided text chunk. Count from 0 at the beginning of the chunk.'),
-
-  charRangeEnd: z.number()
-    .int()
-    .positive()
-    .describe('Ending character index of the quote within the provided text chunk. Must be greater than charRangeStart.'),
-
-  spreadsheetId: z.string()
-    .optional()
-    .describe('ID from the master event spreadsheet if this event matches a known event type. Leave undefined if no clear match exists.'),
-  
-  approximateDate: z.string()
-    .optional()
-    .describe('Any approximate date mentioned in the text or inferred date (e.g., "circa 1888", "late April 1888"). For example, if only a month is provided in the text, but you know what year is being referred to, include the month and the inferred year. Use ISO format YYYY-MM-DD when possible. Leave undefined if no date is mentioned.'),
-
-  absoluteDate: z.string()
-    .optional()
-    .describe('Any explicit date mentioned in the text (e.g., "1888-04-12", "April 12, 1888"). Use ISO format YYYY-MM-DD when possible. Leave undefined if no specific date is mentioned.')
-}).refine(
-  (data) => data.charRangeEnd > data.charRangeStart,
-  {
-    message: "charRangeEnd must be greater than charRangeStart",
-    path: ["charRangeEnd"]
-  }
-);
 /**
  * Creates the create_event tool
  * Allows the agent to create a new event node in the database
  */
 function createEventTool(context: EventToolContext) {
+  // Base schema without spreadsheetId
+  const baseSchema = z.object({
+    quote: z.string()
+      .min(1)
+      .describe('The exact text quote from the novel that describes the event. Must be verbatim from the source text.'),
+
+    description: z.string()
+      .min(10)
+      .max(200)
+      .describe('A clear, natural language description of the event with additional context about what happened, who was involved, and why it matters to the story. This should be shot so that it can function as a caption or annotation.'),
+
+    charRangeStart: z.number()
+      .int()
+      .nonnegative()
+      .describe('Starting character index of the quote within the provided text chunk. Count from 0 at the beginning of the chunk.'),
+
+    charRangeEnd: z.number()
+      .int()
+      .positive()
+      .describe('Ending character index of the quote within the provided text chunk. Must be greater than charRangeStart.'),
+
+    approximateDate: z.string()
+      .optional()
+      .describe('Any approximate date mentioned in the text or inferred date (e.g., "circa 1888", "late April 1888"). For example, if only a month is provided in the text, but you know what year is being referred to, include the month and the inferred year. Use ISO format YYYY-MM-DD when possible. Leave undefined if no date is mentioned.'),
+
+    absoluteDate: z.string()
+      .optional()
+      .describe('Any explicit date mentioned in the text (e.g., "1888-04-12", "April 12, 1888"). Use ISO format YYYY-MM-DD when possible. Leave undefined if no specific date is mentioned.')
+  }).refine(
+    (data) => data.charRangeEnd > data.charRangeStart,
+    {
+      message: "charRangeEnd must be greater than charRangeStart",
+      path: ["charRangeEnd"]
+    }
+  );
+
+  // Extended schema with spreadsheetId (only if master events enabled)
+  const schema = context.masterEventsEnabled
+    ? baseSchema.safeExtend({
+        spreadsheetId: z.string()
+          .optional()
+          .describe('ID from the master event spreadsheet if this event matches a known event type. Leave undefined if no clear match exists.')
+      })
+    : baseSchema;
+
+  // Create TypeScript type from schema
+  type CreateEventParams = z.infer<typeof schema>;
+
   return tool({
     description: `Create a new event node in the story timeline. Use this when you identify a significant plot point, action, or occurrence in the text.
 
@@ -87,9 +99,9 @@ Do NOT create events for:
 - Character thoughts or internal monologue (unless they result in action)
 - Scene setting or descriptions`,
 
-    inputSchema: DetectedEventSchema,
+    inputSchema: schema,
 
-    execute: async (params) => {
+    execute: async (params: CreateEventParams) => {
       // Emit tool call message
       context.emitMessage('tool_call', 'event-detector', 'Creating event', {
         tool: 'create_event',
@@ -122,13 +134,14 @@ Do NOT create events for:
         );
 
         // Create event in database
+        // Note: spreadsheetId may be undefined if master events are disabled
         const eventId = await createEventNode({
           quote: params.quote,
           description: params.description,
           charRangeStart: globalCharStart,
           charRangeEnd: globalCharEnd,
           novelName: context.novelName,
-          spreadsheetId: params.spreadsheetId,
+          spreadsheetId: (params as any).spreadsheetId,
           approximateDate: params.approximateDate,
           absoluteDate: params.absoluteDate,
         });
@@ -186,7 +199,7 @@ Guidelines:
       toEventId: z.string().describe('ID of the target event'),
       relationshipType: z.enum(['BEFORE', 'AFTER', 'CONCURRENT']).describe('Type of temporal relationship'),
       sourceText: z.string().describe('Text snippet that indicates this relationship'),
-    }).strict(),
+    }),
 
     execute: async (params) => {
       context.emitMessage('tool_call', 'event-detector', 'Creating relationship', {
@@ -244,7 +257,7 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
       quote: z.string().optional().describe('Exact quote to search for'),
       charRangeStart: z.number().optional().describe('Global character range start position'),
       charRangeEnd: z.number().optional().describe('Global character range end position'),
-    }).strict(),
+    }),
 
     execute: async (params) => {
       context.emitMessage('tool_call', 'event-detector', 'Finding event', {
@@ -317,7 +330,7 @@ function updateEventTool(context: EventToolContext) {
       spreadsheetId: z.string().optional().describe('Master event spreadsheet ID'),
       approximateDate: z.string().optional().describe('Approximate or inferred date'),
       absoluteDate: z.string().optional().describe('Explicit hard date (ISO format)'),
-    }).strict(),
+    }),
 
     execute: async (params) => {
       const { eventId, ...updates } = params;
@@ -364,7 +377,7 @@ For example, if the current text says "the next day after the party" and you cre
 
     inputSchema: z.object({
       limit: z.number().optional().default(10).describe('Maximum number of recent events to return (default: 10, max: 50)'),
-    }).strict(),
+    }),
 
     execute: async (params) => {
       const limit = Math.min(params.limit || 10, 50); // Cap at 50 to avoid overwhelming the context

@@ -83,12 +83,12 @@ export class Orchestrator {
   /**
    * Creates a new Orchestrator instance
    * @param {string} novelPath - Path to the novel file
-   * @param {string} spreadsheetPath - Path to the master events spreadsheet
+   * @param {string} spreadsheetPath - Optional path to the master events spreadsheet
    * @param {Partial<OrchestratorConfig>} config - Optional configuration overrides
    */
   constructor(
     private novelPath: string,
-    private spreadsheetPath: string,
+    private spreadsheetPath: string | undefined,
     config: Partial<OrchestratorConfig> = {}
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -153,14 +153,19 @@ export class Orchestrator {
       this.stats.totalCharacters = this.novelReader.getContentLength();
       logger.info(`Novel loaded - filename: ${this.novelReader.getFilename()}, totalCharacters: ${this.stats.totalCharacters}`);
 
-      // Initialize event detector with master events
+      // Initialize event detector (with or without master events)
       this.emitMessage('status', 'orchestrator', 'Initializing Event Detector agent...');
-      await this.eventDetector.initialize(this.spreadsheetPath);
+
+      if (this.spreadsheetPath) {
+        await this.eventDetector.initialize(this.spreadsheetPath);
+        logger.info({ spreadsheetPath: this.spreadsheetPath }, 'Event detector initialized with master events');
+      } else {
+        await this.eventDetector.initialize();
+        logger.info('Event detector initialized without master events');
+      }
 
       // Inject the emit function to enable real-time status updates from the agent
       this.eventDetector.setEmitFunction(this.emitMessage.bind(this));
-
-      logger.info('Event detector initialized');
 
       this.emitMessage('success', 'orchestrator', 'Orchestrator initialization complete', {
         totalCharacters: this.stats.totalCharacters,

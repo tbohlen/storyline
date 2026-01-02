@@ -37,17 +37,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use the sample spreadsheet for event types
-    const spreadsheetPath = join(dataDir, 'event-timeline.csv');
+    // Conditionally load master events spreadsheet based on environment variable
+    const useMasterEvents = process.env.USE_MASTER_EVENTS === 'true';
+    const masterEventsPath = process.env.MASTER_EVENTS_PATH || 'event-timeline.csv';
 
-    if (!existsSync(spreadsheetPath)) {
-      return NextResponse.json(
-        {
-          error: 'Events spreadsheet not found. Please ensure event-timeline.csv exists in the data directory.',
-          hint: 'You may need to create or copy the master events spreadsheet.'
-        },
-        { status: 404 }
-      );
+    let spreadsheetPath: string | undefined;
+
+    if (useMasterEvents) {
+      const spreadsheetFullPath = join(dataDir, masterEventsPath);
+
+      // Check if file exists
+      if (existsSync(spreadsheetFullPath)) {
+        spreadsheetPath = spreadsheetFullPath;
+        logger.info({ spreadsheetPath }, 'Using master events spreadsheet');
+      } else {
+        logger.warn({
+          expectedPath: spreadsheetFullPath
+        }, 'Master events enabled but file not found, proceeding without it');
+        spreadsheetPath = undefined;
+      }
+    } else {
+      logger.info('Master events spreadsheet disabled via environment variable');
+      spreadsheetPath = undefined;
     }
 
     // Check if already processing this file
