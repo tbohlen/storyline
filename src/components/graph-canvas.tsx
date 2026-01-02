@@ -40,6 +40,7 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
       },
       // Style selected node differently
       color: isSelected ? '#3b82f6' : undefined, // Blue for selected, default for others
+      size: 50,
       caption: truncate(node.description, 50)
     };
   });
@@ -50,6 +51,7 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
     from: edge.from,
     to: edge.to,
     type: edge.type,
+    caption: edge.type, // Display the relationship type on the arrow
     properties: {
       sourceText: edge.sourceText
     }

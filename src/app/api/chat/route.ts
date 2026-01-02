@@ -36,7 +36,6 @@ export async function POST(req: Request) {
       messages,
       system: prompt,
       tools: {},
-      maxSteps: 10
     });
 
     return result.toDataStreamResponse();

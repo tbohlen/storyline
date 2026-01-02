@@ -141,7 +141,7 @@ Do NOT create events for:
           charRangeStart: globalCharStart,
           charRangeEnd: globalCharEnd,
           novelName: context.novelName,
-          spreadsheetId: (params as any).spreadsheetId,
+          spreadsheetId: params.spreadsheetId,
           approximateDate: params.approximateDate,
           absoluteDate: params.absoluteDate,
         });
@@ -185,19 +185,19 @@ function createRelationshipTool(context: EventToolContext) {
 
 Relationship types:
 - BEFORE: fromEvent happens before toEvent
-- AFTER: fromEvent happens after toEvent
 - CONCURRENT: Events happen at the same time
 
 Guidelines:
 - You can create relationships between events you just created or events you find
 - The temporal relationship should be clear from the text
 - You need source text that indicates the relationship
-- Consider both explicit temporal markers ("the next day", "meanwhile") and implicit narrative flow`,
+- Consider both explicit temporal markers ("the next day", "meanwhile") and implicit narrative flow
+- If event A happens after event B, create a BEFORE relationship with B as fromEvent and A as toEvent`,
 
     inputSchema: z.object({
       fromEventId: z.string().describe('ID of the source event'),
       toEventId: z.string().describe('ID of the target event'),
-      relationshipType: z.enum(['BEFORE', 'AFTER', 'CONCURRENT']).describe('Type of temporal relationship'),
+      relationshipType: z.enum(['BEFORE', 'CONCURRENT']).describe('Type of temporal relationship'),
       sourceText: z.string().describe('Text snippet that indicates this relationship'),
     }),
 
@@ -445,7 +445,6 @@ For example, if the current text says "the next day after the party" and you cre
  *   system,
  *   prompt,
  *   tools,
- *   maxSteps: 20
  * });
  */
 export function createEventTools(context: EventToolContext) {

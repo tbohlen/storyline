@@ -137,24 +137,26 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
   };
 
   return (
-    <Card className={cn('h-full flex flex-col', className)}>
+    <Card className={cn("h-full flex flex-col", className)}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Analysis Progress</CardTitle>
           <div className="flex items-center space-x-2">
-            {connectionStatus === 'connecting' && (
+            {connectionStatus === "connecting" && (
               <div className="flex items-center space-x-1">
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                <span className="text-sm text-muted-foreground">Connecting...</span>
+                <span className="text-sm text-muted-foreground">
+                  Connecting...
+                </span>
               </div>
             )}
-            {connectionStatus === 'connected' && (
+            {connectionStatus === "connected" && (
               <div className="flex items-center space-x-1">
                 <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm text-green-600">Connected</span>
               </div>
             )}
-            {connectionStatus === 'error' && (
+            {connectionStatus === "error" && (
               <div className="flex items-center space-x-1">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
                 <span className="text-sm text-red-600">Connection Error</span>
@@ -179,7 +181,7 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
 
         <ScrollArea className="h-full">
           <div className="space-y-3 pr-4">
-            {messages.length === 0 && connectionStatus === 'connected' && (
+            {messages.length === 0 && connectionStatus === "connected" && (
               <div className="text-center text-muted-foreground py-8">
                 <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>Waiting for analysis to begin...</p>
@@ -197,7 +199,10 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2 mb-1">
-                    <Badge variant="outline" className={cn('text-xs', getAgentColor(message.agent))}>
+                    <Badge
+                      variant="outline"
+                      className={cn("text-xs", getAgentColor(message.agent))}
+                    >
                       {message.agent}
                     </Badge>
                     {getTypeIcon(message.type)}
@@ -210,13 +215,12 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
                     {message.message}
                   </div>
 
-                  {message.data && (
+                  {!!message.data && (
                     <div className="mt-2 p-2 bg-muted rounded text-xs font-mono overflow-x-auto">
                       <pre className="whitespace-pre-wrap">
-                        {typeof message.data === 'object'
+                        {typeof message.data === "object"
                           ? JSON.stringify(message.data, null, 2)
-                          : String(message.data)
-                        }
+                          : String(message.data)}
                       </pre>
                     </div>
                   )}
