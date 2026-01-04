@@ -46,6 +46,7 @@ export const loggers = {
   database: createLogger('database'),
   orchestrator: createLogger('orchestrator'),
   eventDetector: createLogger('event-detector'),
+  timeline: createLogger('timeline'),
   novelReader: createLogger('novel-reader'),
   fileParser: createLogger('file-parser'),
   api: createLogger('api'),

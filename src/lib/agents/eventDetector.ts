@@ -193,6 +193,7 @@ WORKFLOW:
         emitMessage: this.emitMessage,
         recentEventIds,
         masterEventsEnabled: this.masterEventsEnabled,
+        masterEvents: this.masterEvents,
       });
 
       // Use AI to detect events and relationships in the text chunk

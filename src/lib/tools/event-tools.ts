@@ -95,6 +95,8 @@ export interface EventToolContext {
   recentEventIds: string[];
   /** Whether master events spreadsheet is enabled */
   masterEventsEnabled: boolean;
+  /** Master events data from spreadsheet (if enabled) */
+  masterEvents?: Record<string, string>[];
 }
 
 /**
@@ -450,17 +452,110 @@ For example, if the current text says "the next day after the party" and you cre
 }
 
 /**
+ * Creates the find_master_event tool
+ * Allows the agent to search the master events spreadsheet for matching event types
+ */
+function findMasterEventTool(context: EventToolContext) {
+  return tool({
+    description: `Search the master events spreadsheet for a matching event type. Use this to find the spreadsheetId for an event that matches a known master event category.
+
+This is useful during timeline resolution when you want to categorize events by linking them to master event types.`,
+
+    inputSchema: z.object({
+      description: z.string().describe('Event description to search for in master events'),
+    }),
+
+    execute: async (params) => {
+      context.emitMessage('tool_call', 'timeline-resolver', 'Searching for master event', {
+        tool: 'find_master_event',
+        description: params.description.substring(0, 50),
+      });
+
+      try {
+        if (!context.masterEventsEnabled || !context.masterEvents || context.masterEvents.length === 0) {
+          context.emitMessage('tool_result', 'timeline-resolver', 'Master events not available', {
+            tool: 'find_master_event',
+          });
+          return {
+            found: false,
+            message: 'Master events spreadsheet is not enabled or empty',
+          };
+        }
+
+        // Simple fuzzy matching: find master events that contain keywords from the description
+        const descriptionLower = params.description.toLowerCase();
+        const keywords = descriptionLower.split(/\s+/).filter(w => w.length > 3); // Words longer than 3 chars
+
+        const matches = context.masterEvents
+          .map(masterEvent => {
+            const masterDescLower = (masterEvent.description || '').toLowerCase();
+            const matchCount = keywords.filter(keyword => masterDescLower.includes(keyword)).length;
+            const matchScore = matchCount / Math.max(keywords.length, 1);
+
+            return {
+              masterEvent,
+              matchScore,
+            };
+          })
+          .filter(m => m.matchScore > 0.3) // At least 30% of keywords match
+          .sort((a, b) => b.matchScore - a.matchScore);
+
+        if (matches.length === 0) {
+          context.emitMessage('tool_result', 'timeline-resolver', 'No matching master event found', {
+            tool: 'find_master_event',
+          });
+          return {
+            found: false,
+            message: 'No matching master event found',
+          };
+        }
+
+        const bestMatch = matches[0];
+
+        context.emitMessage('tool_result', 'timeline-resolver', 'Found master event match', {
+          tool: 'find_master_event',
+          spreadsheetId: bestMatch.masterEvent.id,
+          confidence: bestMatch.matchScore,
+        });
+
+        return {
+          found: true,
+          spreadsheetId: bestMatch.masterEvent.id,
+          description: bestMatch.masterEvent.description,
+          category: bestMatch.masterEvent.category,
+          matchConfidence: bestMatch.matchScore,
+          alternativeMatches: matches.slice(1, 3).map(m => ({
+            spreadsheetId: m.masterEvent.id,
+            description: m.masterEvent.description,
+            matchConfidence: m.matchScore,
+          })),
+        };
+      } catch (error) {
+        logger.error({ error, params }, 'Failed to find master event');
+        context.emitMessage('error', 'timeline-resolver', 'Failed to find master event', {
+          tool: 'find_master_event',
+          error: String(error),
+        });
+        throw error;
+      }
+    },
+  });
+}
+
+/**
  * Factory function that creates all event tools with the provided context
  *
  * @param context - Event tool context containing shared state and functions
- * @returns Object containing all five event tools
+ * @returns Object containing all event tools
  *
  * @example
  * const tools = createEventTools({
  *   globalStartPosition: 1000,
  *   novelName: 'my-novel.docx',
  *   emitMessage: (type, agent, message, data) => { ... },
- *   recentEventIds: []
+ *   recentEventIds: [],
+ *   masterEventsEnabled: true,
+ *   masterEvents: [...]
  * });
  *
  * // Use with AI SDK generateText
@@ -478,5 +573,6 @@ export function createEventTools(context: EventToolContext) {
     find_event: findEventTool(context),
     update_event: updateEventTool(context),
     get_recent_events: getRecentEventsTool(context),
+    find_master_event: findMasterEventTool(context),
   };
 }

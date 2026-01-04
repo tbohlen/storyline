@@ -337,3 +337,120 @@ export async function getAllEvents(novelName?: string): Promise<EventNode[]> {
     throw new Error(`Failed to retrieve events: ${error}`);
   }
 }
+
+/**
+ * Gets events within a specific character range for batching
+ * @param {string} novelName - Novel name to filter by
+ * @param {number} startChar - Starting character position
+ * @param {number} endChar - Ending character position
+ * @returns {Promise<EventNode[]>} Array of events within the range
+ */
+export async function getEventsInRange(
+  novelName: string,
+  startChar: number,
+  endChar: number
+): Promise<EventNode[]> {
+  try {
+    logger.debug({ novelName, startChar, endChar }, 'Retrieving events in character range');
+
+    const cypher = `
+      MATCH (e:Event)
+      WHERE e.novelName = $novelName
+        AND e.charRangeStart >= $startChar
+        AND e.charRangeEnd <= $endChar
+      RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.novelName as novelName,
+             e.quote as quote, e.description as description,
+             e.charRangeStart as charRangeStart, e.charRangeEnd as charRangeEnd,
+             e.approximateDate as approximateDate, e.absoluteDate as absoluteDate
+      ORDER BY e.charRangeStart ASC
+    `;
+
+    const result = await executeQuery(cypher, { novelName, startChar, endChar });
+
+    const events: EventNode[] = result.records.map(record => ({
+      id: record.get('id'),
+      spreadsheetId: record.get('spreadsheetId'),
+      novelName: record.get('novelName'),
+      quote: record.get('quote'),
+      description: record.get('description'),
+      charRangeStart: record.get('charRangeStart'),
+      charRangeEnd: record.get('charRangeEnd'),
+      approximateDate: record.get('approximateDate'),
+      absoluteDate: record.get('absoluteDate'),
+    }));
+
+    logger.debug({ count: events.length, novelName, startChar, endChar }, 'Retrieved events in range');
+    return events;
+
+  } catch (error) {
+    logger.error({ novelName, startChar, endChar, error }, 'Failed to retrieve events in range');
+    throw new Error(`Failed to retrieve events in range: ${error}`);
+  }
+}
+
+/**
+ * Gets all relationships for a batch of events
+ * @param {string[]} eventIds - Array of event IDs
+ * @returns {Promise<Array>} Array of relationships with from/to event details
+ */
+export async function getBatchRelationships(
+  eventIds: string[]
+): Promise<Array<{ from: EventNode; to: EventNode; type: string; sourceText: string }>> {
+  try {
+    logger.debug({ eventCount: eventIds.length }, 'Retrieving batch relationships');
+
+    if (eventIds.length === 0) {
+      return [];
+    }
+
+    const cypher = `
+      MATCH (from:Event)-[r]->(to:Event)
+      WHERE from.id IN $eventIds OR to.id IN $eventIds
+      RETURN from.id as fromId, from.spreadsheetId as fromSpreadsheetId, from.novelName as fromNovelName,
+             from.quote as fromQuote, from.description as fromDescription,
+             from.charRangeStart as fromCharStart, from.charRangeEnd as fromCharEnd,
+             from.approximateDate as fromApproxDate, from.absoluteDate as fromAbsDate,
+             to.id as toId, to.spreadsheetId as toSpreadsheetId, to.novelName as toNovelName,
+             to.quote as toQuote, to.description as toDescription,
+             to.charRangeStart as toCharStart, to.charRangeEnd as toCharEnd,
+             to.approximateDate as toApproxDate, to.absoluteDate as toAbsDate,
+             type(r) as relType, r.sourceText as sourceText
+    `;
+
+    const result = await executeQuery(cypher, { eventIds });
+
+    const relationships = result.records.map(record => ({
+      from: {
+        id: record.get('fromId'),
+        spreadsheetId: record.get('fromSpreadsheetId'),
+        novelName: record.get('fromNovelName'),
+        quote: record.get('fromQuote'),
+        description: record.get('fromDescription'),
+        charRangeStart: record.get('fromCharStart'),
+        charRangeEnd: record.get('fromCharEnd'),
+        approximateDate: record.get('fromApproxDate'),
+        absoluteDate: record.get('fromAbsDate'),
+      },
+      to: {
+        id: record.get('toId'),
+        spreadsheetId: record.get('toSpreadsheetId'),
+        novelName: record.get('toNovelName'),
+        quote: record.get('toQuote'),
+        description: record.get('toDescription'),
+        charRangeStart: record.get('toCharStart'),
+        charRangeEnd: record.get('toCharEnd'),
+        approximateDate: record.get('toApproxDate'),
+        absoluteDate: record.get('toAbsDate'),
+      },
+      type: record.get('relType'),
+      sourceText: record.get('sourceText'),
+    }));
+
+    logger.debug({ relationshipCount: relationships.length }, 'Retrieved batch relationships');
+    return relationships;
+
+  } catch (error) {
+    logger.error({ eventCount: eventIds.length, error }, 'Failed to retrieve batch relationships');
+    throw new Error(`Failed to retrieve batch relationships: ${error}`);
+  }
+}

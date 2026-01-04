@@ -1,6 +1,9 @@
 import { NovelReader } from './novelReader';
 import { EventDetectorAgent } from '../agents/eventDetector';
+import { TimelineResolverAgent } from '../agents/timelineResolver';
 import { initializeDatabase } from './database';
+import { getAllEvents } from '../tools/databaseTools';
+import { readCsv } from './fileParser';
 import { loggers } from '../utils/logger';
 
 const logger = loggers.orchestrator;
@@ -41,17 +44,21 @@ export interface OrchestratorConfig {
   maxRetries: number;          // Max retries for failed operations
   eventDistance: number;       // Distance for relationship detection (not used yet)
   maxEventCount: number;       // Max events per relationship group (not used yet)
+  batchRadius: number;         // Group events within this range for timeline resolution
+  contextMargin: number;       // Extra context around batches for timeline resolution
 }
 
 /**
  * Default configuration
  */
 const DEFAULT_CONFIG: OrchestratorConfig = {
-  chunkSize: 1000,
-  overlapSize: 200,
+  chunkSize: 2000,
+  overlapSize: 400,
   maxRetries: 3,
   eventDistance: 5000,
-  maxEventCount: 10
+  maxEventCount: 10,
+  batchRadius: 2500,
+  contextMargin: 1000
 };
 
 /**
@@ -244,6 +251,17 @@ export class Orchestrator {
         }
       }
 
+      // PASS 2: Timeline Resolution
+      // After all chunks are processed, resolve timeline relationships
+      logger.info("Event detection complete - starting timeline resolution");
+      this.emitMessage(
+        "status",
+        "orchestrator",
+        "Event detection complete - starting timeline resolution"
+      );
+
+      await this.resolveTimeline();
+
       this.stats.processing = false;
       this.stats.endTime = new Date();
       this.stats.progress = 100;
@@ -376,6 +394,242 @@ export class Orchestrator {
     });
 
     logger.debug(`Chunk processing complete - chunksProcessed: ${this.stats.chunksProcessed}, progress: ${this.stats.progress}%, currentPosition: ${this.stats.currentPosition}`);
+  }
+
+  /**
+   * Resolves timeline relationships for all detected events
+   * Groups nearby events into batches and analyzes them with surrounding context
+   * @returns {Promise<void>}
+   */
+  private async resolveTimeline(): Promise<void> {
+    try {
+      this.emitMessage(
+        "status",
+        "orchestrator",
+        "Starting timeline resolution",
+        {
+          novelName: this.novelReader.getFilename(),
+        }
+      );
+      logger.info("Starting timeline resolution pass");
+
+      // Query all events for this novel
+      const allEvents = await getAllEvents(this.novelReader.getFilename());
+
+      if (allEvents.length === 0) {
+        this.emitMessage(
+          "info",
+          "orchestrator",
+          "No events found - skipping timeline resolution"
+        );
+        logger.info("No events found - skipping timeline resolution");
+        return;
+      }
+
+      logger.info(
+        { eventCount: allEvents.length },
+        "Retrieved all events for timeline resolution"
+      );
+
+      // Group events into batches (events within batchRadius of each other)
+      const batches: typeof allEvents[] = [];
+      let currentBatch: typeof allEvents = [];
+
+      for (const event of allEvents) {
+        if (currentBatch.length === 0) {
+          // Start new batch
+          currentBatch.push(event);
+        } else {
+          // Check if this event is within batchRadius of the last event in current batch
+          const lastEvent = currentBatch[currentBatch.length - 1];
+          const distance = event.charRangeStart - lastEvent.charRangeEnd;
+
+          if (distance <= this.config.batchRadius) {
+            // Add to current batch
+            currentBatch.push(event);
+          } else {
+            // Start new batch
+            batches.push(currentBatch);
+            currentBatch = [event];
+          }
+        }
+      }
+
+      // Don't forget the last batch
+      if (currentBatch.length > 0) {
+        batches.push(currentBatch);
+      }
+
+      logger.info(
+        { batchCount: batches.length, eventCount: allEvents.length },
+        "Events grouped into batches"
+      );
+
+      this.emitMessage(
+        "status",
+        "orchestrator",
+        `Analyzing ${batches.length} batches of events`,
+        {
+          batchCount: batches.length,
+          eventCount: allEvents.length,
+        }
+      );
+
+      // Initialize timeline resolver
+      const timelineResolver = new TimelineResolverAgent(
+        this.novelReader.getFilename(),
+        this.emitMessage.bind(this)
+      );
+
+      // Load master events if we have them
+      let masterEvents: Record<string, string>[] | undefined;
+      if (this.spreadsheetPath) {
+        try {
+          masterEvents = await readCsv(this.spreadsheetPath);
+          logger.info(
+            { masterEventCount: masterEvents.length },
+            "Loaded master events for timeline resolution"
+          );
+        } catch (error) {
+          logger.warn(
+            { error, spreadsheetPath: this.spreadsheetPath },
+            "Failed to load master events for timeline resolution"
+          );
+        }
+      }
+
+      await timelineResolver.initialize(masterEvents);
+
+      // Track statistics
+      let totalRelationships = 0;
+      let totalDates = 0;
+      let totalMasterEvents = 0;
+
+      // Process each batch
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        const batchNumber = i + 1;
+
+        try {
+          this.emitMessage(
+            "analyzing",
+            "orchestrator",
+            `Processing batch ${batchNumber}/${batches.length}`,
+            {
+              batchNumber,
+              totalBatches: batches.length,
+              eventsInBatch: batch.length,
+            }
+          );
+
+          logger.debug(
+            { batchNumber, eventCount: batch.length },
+            "Processing event batch"
+          );
+
+          // Calculate context range (min charRangeStart - margin to max charRangeEnd + margin)
+          const minChar = Math.max(
+            0,
+            batch[0].charRangeStart - this.config.contextMargin
+          );
+          const maxChar = Math.min(
+            this.novelReader.getContentLength(),
+            batch[batch.length - 1].charRangeEnd + this.config.contextMargin
+          );
+
+          // Extract context text
+          const contextText = this.novelReader.getTextChunk(minChar, maxChar);
+
+          logger.debug(
+            {
+              batchNumber,
+              contextRange: `${minChar}-${maxChar}`,
+              contextLength: contextText.length,
+            },
+            "Extracted context text for batch"
+          );
+
+          // Analyze batch
+          const result = await timelineResolver.analyzeBatch(batch, contextText);
+
+          totalRelationships += result.relationshipsCreated;
+          totalDates += result.datesAdded;
+          totalMasterEvents += result.masterEventsLinked;
+
+          logger.info(
+            {
+              batchNumber,
+              relationshipsCreated: result.relationshipsCreated,
+              datesAdded: result.datesAdded,
+              masterEventsLinked: result.masterEventsLinked,
+            },
+            "Batch processing complete"
+          );
+
+          this.emitMessage(
+            "progress",
+            "orchestrator",
+            `Batch ${batchNumber}/${batches.length} complete`,
+            {
+              batchNumber,
+              totalBatches: batches.length,
+              progress: Math.round((batchNumber / batches.length) * 100),
+              relationshipsCreated: result.relationshipsCreated,
+              datesAdded: result.datesAdded,
+              masterEventsLinked: result.masterEventsLinked,
+            }
+          );
+        } catch (error) {
+          logger.error(
+            { error, batchNumber, eventCount: batch.length },
+            "Failed to process batch"
+          );
+          this.emitMessage(
+            "error",
+            "orchestrator",
+            `Failed to process batch ${batchNumber}: ${error}`,
+            {
+              batchNumber,
+              error: String(error),
+            }
+          );
+          // Continue with next batch despite error
+        }
+      }
+
+      logger.info(
+        {
+          batchesProcessed: batches.length,
+          relationshipsCreated: totalRelationships,
+          datesAdded: totalDates,
+          masterEventsLinked: totalMasterEvents,
+        },
+        "Timeline resolution complete"
+      );
+
+      this.emitMessage(
+        "completed",
+        "orchestrator",
+        "Timeline resolution complete",
+        {
+          batchesProcessed: batches.length,
+          relationshipsCreated: totalRelationships,
+          datesAdded: totalDates,
+          masterEventsLinked: totalMasterEvents,
+        }
+      );
+    } catch (error) {
+      logger.error({ error }, "Timeline resolution failed");
+      this.emitMessage(
+        "error",
+        "orchestrator",
+        `Timeline resolution failed: ${error}`,
+        {
+          error: String(error),
+        }
+      );
+      throw new Error(`Timeline resolution failed: ${error}`);
+    }
   }
 
   /**

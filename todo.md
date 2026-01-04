@@ -1,4 +1,4 @@
-- [] Clean up the Anlysis progress output to make it more readible
+- [] Clean up the Analysis progress output to make it more readible
 - [] Allow the user to upload the master events list
 - [] After analysis is complete, offer the user a chat interface to modify the graph
 - [] Make shorter descriptions for nodes for readibility
