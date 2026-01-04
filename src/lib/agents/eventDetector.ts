@@ -183,15 +183,11 @@ WORKFLOW:
         }
       );
 
-      // Track created events in this session
-      const recentEventIds: string[] = [];
-
       // Create tools with context including emit function
       const tools = createEventTools({
         globalStartPosition,
         novelName: this.novelName,
         emitMessage: this.emitMessage,
-        recentEventIds,
         masterEventsEnabled: this.masterEventsEnabled,
         masterEvents: this.masterEvents,
       });
@@ -219,15 +215,17 @@ WORKFLOW:
 
           // Emit each tool call with its arguments
           toolCalls?.forEach((tc) => {
-            this.emitMessage(
-              "tool_call",
-              "event-detector",
-              `Calling ${tc.toolName}`,
-              {
-                toolName: tc.toolName,
-                args: 'args' in tc ? tc.args : undefined, // TODO: Fix types in a cleaner way?
-              }
-            );
+            if (tc) {
+              this.emitMessage(
+                "tool_call",
+                "event-detector",
+                `Calling ${tc.toolName}`,
+                {
+                  toolName: tc.toolName,
+                  args: 'args' in tc ? tc.args : undefined, // TODO: Fix types in a cleaner way?
+                }
+              );
+            }
           });
 
           // Emit AI reasoning/thinking if present
@@ -255,7 +253,7 @@ WORKFLOW:
 
       for (const toolResult of result.toolResults || []) {
         if (
-          toolResult.toolName === "create_event" &&
+          toolResult && toolResult.toolName === "create_event" &&
           typeof toolResult.output === "object" &&
           toolResult.output !== null
         ) {
@@ -264,7 +262,7 @@ WORKFLOW:
             createdEventIds.push(resultObj.eventId);
           }
         } else if (
-          toolResult.toolName === "create_relationship" &&
+          toolResult && toolResult.toolName === "create_relationship" &&
           typeof toolResult.output === "object" &&
           toolResult.output !== null
         ) {

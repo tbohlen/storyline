@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { EventNode } from '@/lib/tools/databaseTools';
+import type { EventNode } from '@/lib/db/events';
 
 /**
  * Graph data structure returned from /api/graph

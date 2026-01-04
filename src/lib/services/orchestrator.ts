@@ -2,7 +2,7 @@ import { NovelReader } from './novelReader';
 import { EventDetectorAgent } from '../agents/eventDetector';
 import { TimelineResolverAgent } from '../agents/timelineResolver';
 import { initializeDatabase } from './database';
-import { getAllEvents } from '../tools/databaseTools';
+import { getAllEvents } from '../db/events';
 import { readCsv } from './fileParser';
 import { loggers } from '../utils/logger';
 

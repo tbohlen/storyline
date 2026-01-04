@@ -11,7 +11,7 @@ import {
   findExistingEvent,
   updateEventNode,
   getAllEvents,
-} from './databaseTools';
+} from '../db/events';
 import { loggers } from '../utils/logger';
 import truncate from '../utils/truncate';
 
@@ -91,8 +91,6 @@ export interface EventToolContext {
     message: string,
     data?: Record<string, unknown>
   ) => void;
-  /** Array to track event IDs created in this session */
-  recentEventIds: string[];
   /** Whether master events spreadsheet is enabled */
   masterEventsEnabled: boolean;
   /** Master events data from spreadsheet (if enabled) */
@@ -166,9 +164,6 @@ Do NOT create events for:
           approximateDate: params.approximateDate,
           absoluteDate: params.absoluteDate,
         });
-
-        // Track this event for potential relationships
-        context.recentEventIds.push(eventId);
 
         // Emit success message
         context.emitMessage("tool_result", "event-detector", "Event created", {
@@ -553,7 +548,6 @@ This is useful during timeline resolution when you want to categorize events by 
  *   globalStartPosition: 1000,
  *   novelName: 'my-novel.docx',
  *   emitMessage: (type, agent, message, data) => { ... },
- *   recentEventIds: [],
  *   masterEventsEnabled: true,
  *   masterEvents: [...]
  * });
@@ -573,6 +567,8 @@ export function createEventTools(context: EventToolContext) {
     find_event: findEventTool(context),
     update_event: updateEventTool(context),
     get_recent_events: getRecentEventsTool(context),
-    find_master_event: findMasterEventTool(context),
-  };
+    ...(context.masterEventsEnabled && {
+      find_master_event: findMasterEventTool(context)
+    })
+  }; 
 }

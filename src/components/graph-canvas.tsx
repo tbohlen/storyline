@@ -3,7 +3,7 @@
 import type { Node as NVLNode } from '@neo4j-nvl/base'
 import { InteractiveNvlWrapper } from '@neo4j-nvl/react';
 import { useGraphStore } from '@/lib/store/graph-store';
-import type { EventNode } from '@/lib/tools/databaseTools';
+import type { EventNode } from '@/lib/db/events';
 import truncate from '@/lib/utils/truncate';
 
 interface GraphCanvasProps {

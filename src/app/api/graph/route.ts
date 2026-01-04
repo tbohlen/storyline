@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllEvents } from '@/lib/tools/databaseTools';
+import { getAllEvents } from '@/lib/db/events';
 import { executeQuery } from '@/lib/services/database';
 import { loggers } from '@/lib/utils/logger';
 

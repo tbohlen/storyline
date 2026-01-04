@@ -3,7 +3,7 @@
 import { X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { EventNode } from '@/lib/tools/databaseTools';
+import type { EventNode } from '@/lib/db/events';
 
 interface NodeDetailsOverlayProps {
   node: EventNode | null;

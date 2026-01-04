@@ -1,7 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { ToolLoopAgent } from "ai";
-import { createEventTools, EventToolContext } from "../tools/event-tools";
-import { EventNode, getBatchRelationships } from "../tools/databaseTools";
+import { createEventTools } from "../tools/event-tools";
+import { EventNode, getBatchRelationships } from "../db/events";
 import { loggers } from "../utils/logger";
 
 const logger = loggers.timeline;
@@ -175,16 +175,12 @@ Remember: Your job is to document what the text says, not to resolve contradicti
       const eventIds = events.map(e => e.id);
       const existingRelationships = await getBatchRelationships(eventIds);
 
-      // Track created events (not used for timeline resolution, but required by tool context)
-      const recentEventIds: string[] = [];
-
       // Create tools with context
       // Note: globalStartPosition is 0 since we're not creating new events from text positions
       const tools = createEventTools({
         globalStartPosition: 0,
         novelName: this.novelName,
         emitMessage: this.emitMessage,
-        recentEventIds,
         masterEventsEnabled: this.masterEventsEnabled,
         masterEvents: this.masterEvents,
       });
@@ -229,7 +225,9 @@ Analyze this context and establish temporal relationships between the events. Re
         tools: {
           create_relationship: tools.create_relationship,
           update_event: tools.update_event,
-          find_master_event: tools.find_master_event,
+          ...(tools.find_master_event && {
+            find_master_event: tools.find_master_event,
+          }),
         },
         maxOutputTokens: 20000,
         onStepFinish: ({
@@ -239,24 +237,31 @@ Analyze this context and establish temporal relationships between the events. Re
           finishReason,
           usage,
         }) => {
-          this.emitMessage("step", "timeline-resolver", "Agent step completed", {
-            finishReason,
-            toolCallCount: toolCalls?.length || 0,
-            toolResultCount: toolResults?.length || 0,
-            usage,
-          });
+          this.emitMessage(
+            "step",
+            "timeline-resolver",
+            "Agent step completed",
+            {
+              finishReason,
+              toolCallCount: toolCalls?.length || 0,
+              toolResultCount: toolResults?.length || 0,
+              usage,
+            }
+          );
 
           // Emit each tool call
           toolCalls?.forEach((tc) => {
-            this.emitMessage(
-              "tool_call",
-              "timeline-resolver",
-              `Calling ${tc.toolName}`,
-              {
-                toolName: tc.toolName,
-                args: 'args' in tc ? tc.args : undefined,
-              }
-            );
+            if (tc) {
+              this.emitMessage(
+                "tool_call",
+                "timeline-resolver",
+                `Calling ${tc.toolName}`,
+                {
+                  toolName: tc.toolName,
+                  args: "args" in tc ? tc.args : undefined,
+                }
+              );
+            }
           });
 
           // Emit AI reasoning if present
@@ -280,12 +285,12 @@ Analyze this context and establish temporal relationships between the events. Re
 
       // Count statistics from tool results
       const relationshipsCreated = result.toolResults.filter(
-        (tr) => tr.toolName === "create_relationship" && 'result' in tr && tr.result && typeof tr.result === 'object' && 'success' in tr.result && tr.result.success
+        (tr) => tr && tr.toolName === "create_relationship" && 'result' in tr && tr.result && typeof tr.result === 'object' && 'success' in tr.result && tr.result.success
       ).length;
 
       const datesAdded = result.toolResults.filter(
         (tr) =>
-          tr.toolName === "update_event" &&
+          tr && tr.toolName === "update_event" &&
           'result' in tr &&
           tr.result &&
           typeof tr.result === 'object' &&
@@ -295,7 +300,7 @@ Analyze this context and establish temporal relationships between the events. Re
 
       const masterEventsLinked = result.toolResults.filter(
         (tr) =>
-          tr.toolName === "find_master_event" &&
+          tr && tr.toolName === "find_master_event" &&
           'result' in tr &&
           tr.result &&
           typeof tr.result === 'object' &&
