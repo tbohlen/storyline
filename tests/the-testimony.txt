@@ -1,0 +1,56 @@
+THE TESTIMONY
+Test Story for Event Detection System
+
+Purpose: Tests unreliable narration, nested flashbacks, and same events described at varying levels of detail.
+
+---
+
+Detective Chen reviewed the transcript for the third time. The witness had changed his story again. In his first statement, given the morning after the incident, Marcus Webb claimed he'd been home all evening. Now, sitting across from Chen in the interview room, Webb was describing in excruciating detail how he'd driven to the warehouse district around nine o'clock, parked two blocks away, and watched the building for approximately forty minutes before leaving.
+
+"I need you to walk me through that night one more time," Chen said, trying to keep the frustration from her voice. She'd been working this case for six weeks.
+
+Webb nodded, his hands trembling slightly. "I left my apartment at eight-thirty," he began. "Or maybe it was closer to nine. I remember thinking about the last time I'd been to that part of town." His eyes grew distant. "That was back in March, when I'd gone to confront Daniel about the money. I'd driven the same route then, late at night, my head full of anger. I'd found him in his office—this was in March, you understand—and we'd argued for nearly an hour. He'd laughed at me. Actually laughed. That's when I realized he'd never intended to pay me back. Standing there in his office, watching him lean back in his chair with that smirk, I'd thought about violence for the first time in my life."
+
+Chen made a note. This was new—no previous statement had mentioned any confrontation with the victim before the night in question.
+
+"But I didn't hurt him that night in March," Webb continued. "I left. I walked out of his office, down the stairs, got in my car and drove home. Just like I did on the night he died." He paused, his expression shifting. "When I got to the warehouse district that night—the night in September, I mean—I saw Daniel's car in the lot. I sat in my car debating what to do. That's when I thought back to March again, to how he'd looked at me in his office, and I remembered something else from that visit. There'd been someone else there that night in March. A woman. I'd seen her in the hallway when I arrived, and she'd seemed upset, hurrying past me toward the exit. At the time I hadn't thought much of it, but sitting there in September, watching Daniel's office window, I suddenly remembered her face. It was Claire, Daniel's business partner."
+
+Chen leaned forward. "You're saying you saw Claire at Daniel's office in March?"
+
+"Yes. No." Webb pressed his palms against his temples. "I'm not sure anymore. I've been thinking about it so much that the memories are getting confused. Maybe I saw her that night, or maybe I saw her some other time and my mind is placing her there. What I know for certain is that on the night Daniel died, I sat in my car and never went inside."
+
+The first statement had been brief: "I was home all evening." Three sentences. The second statement, given a week later after Chen had mentioned security footage showing his car in the area, had expanded to half a page: "I drove to the warehouse district but never approached the building. I sat in my car for less than an hour and then went home." Now they were on the fourth version, and Webb was describing not just that September night but events from six months earlier, events that may or may not have happened, memories nested within memories like Russian dolls.
+
+"Let's go back to September," Chen said. "You said you got there around nine."
+
+"Nine-fifteen," Webb corrected. "I remember checking my phone when I parked. There was a message from my sister asking about Thanksgiving plans. I didn't respond. I just sat there, watching the second-floor windows where Daniel's office was. The lights were on. I could see shadows moving. At least, I thought I could. Maybe it was just the reflection of headlights from the street." He stopped, his face paling. "Actually, now that I think about it, I'm not sure the lights were on. When I think back to that moment, sitting in the car, sometimes I remember the windows being dark. But that can't be right, because I definitely remember seeing movement."
+
+Chen closed her eyes briefly. The victim had been killed between nine and eleven that evening. The medical examiner was certain. Webb had just placed himself at the scene during that window, but his story kept shifting like sand.
+
+"In my first statement, I said I was home," Webb said quietly. "That was true in the sense that I wished I'd been home. I wish I'd never driven there. But I did go. I went because—" He stopped again, his eyes unfocusing. "When Daniel laughed at me back in March, in his office, he'd said something. What was it? I've been trying to remember. We were standing by his desk—no, I was standing and he was sitting—and he said something about how I should have known better. But known better about what? The loan? Or something else?"
+
+"Mr. Webb," Chen said, trying to anchor him back to September.
+
+"The confrontation in March lasted about an hour," Webb said, as if she hadn't spoken. "Or maybe it was just twenty minutes. Time felt strange. We argued about the fifteen thousand dollars he owed me. Though it might have been twelve thousand. I've been going over my bank records, and the numbers don't quite match what I remember lending him. When I think about that argument, I can hear his voice clearly—he definitely laughed—but I can't quite see the room anymore. Was there a window behind his desk? There must have been, because I remember looking past him at the parking lot below, seeing my car down there, small and far away. But in September, when I sat in that car watching his window, I couldn't see into his office. The angle was wrong."
+
+Chen made another note: "Witness memory unreliable. Conflating different time periods."
+
+"What happened after you parked in September?" she asked. "Did you get out of the car?"
+
+Webb's hands stopped trembling. His voice became very quiet. "I don't know," he said. "I've tried to remember. I remember parking. I remember the message from my sister. I remember looking up at the building. And then the next thing I remember clearly is driving home, pulling into my driveway, the dashboard clock showing 11:47. There's a gap. Two hours. Maybe I sat in the car the whole time. Maybe I went inside. When I close my eyes and try to remember, I see two different versions. In one, I stay in the car until about ten-thirty, then drive away. In the other, I walk to the building. I climb the stairs. The door to Daniel's office is unlocked. I go inside, and—" He stopped abruptly. "But that's not a memory. That's imagination. That's me trying to fill in the gap. I didn't go inside. I couldn't have."
+
+"Why couldn't you have?"
+
+"Because I would remember it. You don't forget something like that. Walking into that building, climbing those stairs, opening that door—those are actions with weight. They would leave a mark on your memory. The fact that I can't remember means it didn't happen." He looked at her desperately. "Right?"
+
+Chen thought about the security footage she'd reviewed yesterday. The timestamp showed 9:47 PM. A figure that might have been Webb, walking toward the building entrance. The camera angle made it impossible to be certain. The figure had paused at the door, stood there for perhaps thirty seconds, and then disappeared inside. Or had the figure turned away and walked back into the darkness? The footage quality was poor. She'd watched it a dozen times and still wasn't sure.
+
+"Mr. Webb," she said, "I need you to tell me the truth about that night. Not what you wish had happened. Not what you think I want to hear. What actually happened."
+
+Webb looked at her, and for a moment his expression was perfectly clear. "Detective," he said, "I've told you the truth. All of it. Every version. The problem is I don't know which version is real anymore. I know I drove there. I'm certain of that. Everything after that is fog. Maybe I'm the one who killed him. Maybe I walked into that office and we argued again and this time I didn't just walk away. Maybe that's why I can't remember—my mind protecting me from what I did. Or maybe I sat in my car like a coward for two hours and drove home, and someone else killed him, and I'm just a witness who saw nothing useful." He leaned back in his chair. "Which version do you believe?"
+
+Chen didn't answer. She couldn't. Because the more she investigated this case, the more she found herself thinking back to her first conversation with Webb's sister, who'd called the station three days after Daniel's death. The sister had mentioned that Webb had come to her house the evening of the murder, had arrived around eight o'clock and stayed until nearly midnight, watching television with her and her husband. The sister had been certain of the timeline. Chen had written it down, had filed it away. But when she'd interviewed the sister again a week later, the woman had become less certain. Maybe it had been a different evening. Maybe Webb had only stayed for an hour. The husband couldn't remember Webb visiting at all that week.
+
+Everyone's memories were shifting, like the case itself was infected with uncertainty. Even Chen's own recollections of her first visit to the crime scene had become unreliable. Had Daniel's body been slumped over his desk or lying on the floor beside it? She'd written "desk" in her initial report, but now when she pictured the scene, she saw him on the floor. Had someone moved him, or had she misremembered from the start?
+
+The only solid fact was that Daniel Torres had died that night between nine and eleven PM from blunt force trauma to the head. Everything else—who had been there, what had happened, in what order—remained stubbornly unclear, no matter how many times the witnesses told their stories, adding detail with each retelling until the truth was buried under layers of revision and doubt.

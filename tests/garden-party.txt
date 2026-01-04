@@ -1,0 +1,16 @@
+THE GARDEN PARTY
+Test Story for Event Detection System
+
+Purpose: Tests multiple temporal relationship types, implicit ordering, contradictory accounts, and memory vs. narration.
+
+---
+
+Sarah stood in the garden, surveying the wreckage of the party. Broken glass littered the patio, and someone's expensive coat lay crumpled in the flowerbed. She tried to piece together what had happened. The argument had started just after midnight—or had it? Thomas insisted it began earlier, before the cake was cut, but Sarah remembered distinctly serving dessert in perfect silence.
+
+The morning had begun promisingly. She'd arranged the flowers before sunrise, then spent two hours preparing the salmon. Her sister arrived first, bearing wine and complaints about traffic. Later, Thomas appeared with his new girlfriend, and the tension was immediate. By the time the other guests arrived, Sarah was already exhausted. She set out the appetizers. The doorbell rang again.
+
+During dinner, Thomas had raised his glass for a toast, and that's when Margaret stormed out, knocking over a chair. Or did she leave after the toast? In his version, which he'd told Sarah three times now, Margaret had interrupted him mid-sentence, shouting something about betrayal. But Sarah remembered the toast finishing, remembered the awkward silence that followed, and only then did Margaret stand. Sarah had followed her into the garden, pleading with her to stay.
+
+Sarah walked inside now, surveying the dining room. The chair was overturned exactly as she remembered. Or was it? She thought back to the moment when Margaret had stood—had the chair fallen then, or later when Thomas lunged forward to stop her? The memory felt slippery. What she knew for certain was that she'd found them there afterward, Margaret and Thomas both standing in the garden, not speaking, just staring at each other across the roses. That had been after her sister left, she was sure of it. Her sister had hugged her goodbye, whispering apologies, and then driven away. Sarah had gone back outside and found them there.
+
+The real chaos came later, after Margaret left. Thomas started drinking seriously then, and by two in the morning, he was smashing glasses against the stone wall, crying about mistakes he'd made five years ago. Some party that happened before Sarah even knew him—something about a promise he'd broken. But that was ancient history, wasn't it? Sarah cleaned up a piece of glass now and noticed the cut on her hand. Had she gotten that during the party, or after, while cleaning? The night had folded in on itself, events bleeding together until she couldn't separate before from after, cause from effect. All she knew was that in the morning, everyone was gone, and she was alone with the wreckage.
