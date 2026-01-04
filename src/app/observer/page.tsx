@@ -46,14 +46,14 @@ function ObserverContent() {
       </header>
 
       {/* Main Content - Two Panel Layout */}
-      <main className="flex-1 flex gap-4 mx-auto px-4 py-6 min-h-0">
+      <main className="flex-1 flex gap-4 mx-auto px-4 py-6 min-h-0 w-full">
         {/* Graph Panel: 70% */}
-        <div className="flex-[6] min-w-0">
+        <div className="flex-[7] min-w-0">
           <GraphVisualization filename={filename} className="h-full" />
         </div>
 
         {/* Observer Panel: 30% */}
-        <div className="flex-[4] min-w-0">
+        <div className="flex-[3] min-w-0">
           <OrchestratorObserver filename={filename} className="h-full" />
         </div>
       </main>
