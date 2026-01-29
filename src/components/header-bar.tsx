@@ -14,7 +14,7 @@ export function HeaderBar() {
           </div>
           <nav className="flex items-center space-x-4">
             <span className="text-sm text-muted-foreground">
-              Prepare to present your AI-created work
+              Understand your novel&apos;s timeline
             </span>
           </nav>
         </div>

@@ -14,7 +14,7 @@ export function ChatInterfaceEmptyState() {
         </div>
         <h3 className="text-lg font-semibold mb-2">Start a conversation</h3>
         <p className="text-muted-foreground max-w-md">
-          Chat with AI to create deliverables, then get help preparing to present them to your stakeholders. You might learn something new along the way.
+          Ask questions or refine analysis of your novel.
         </p>
       </div>
     </div>

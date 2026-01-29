@@ -39,17 +39,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Project overview
 
-**Objectives (from challenge prompt):**
-1. Show that learning can take place while users use AI for productivity tasks. "Does your prototype genuinely enhance learning rather than just supporting productivity?"
-2. Prototype quickly and iterate. Don't ignore code quality, but it is not the primary focus
-3. Demonstrate user empathy to learners and/or educators
-4. Genuinely enhance learning. Don't just enable creativity
-5. Use clear learning principles in the design of the app
-6. Enhance human agency
-7. Stay narrow and go deep, rather than going broad
+Novelists often have a hard time tracking the complex timelines of the many characters and events in their stories. This project - Storyline - analyzes a novel and creates a timeline representing the specific events that occur in the story and their temporal relationship. This allows the author to explore where they may have introduced contradictions or discover new ways to use prior events as context for their character's actions.
 
-**User Challenge:** When I am working with AI to produce a deliverable, I don't always feel I fully understand what thinking the AI did or why it did it the way it did. When I go to share this with my stakeholders (teachers, bosses, etc) I want to be confident I understand the work and will look good presenting it.
+The system optionally allows the user to provide a spreadsheet of "major events" that they would like the system to primarily focus on.
 
-**Learning Opportunity**: A key challenge with embedding learning into a productivity task is motivation. Users have to *want* to learn in that moment. This user challenge presents an opportunity because they have to learn themselves in order to be able to represent the work to their stakeholders. We can use this to get them started
-
-**Solution**: A system that helps a user prepare to present after having build a deliverable with AI. For this prototype, we will only focus on written work to make implementation easier. The system will first help the user think through who their stakeholders are and what they might ask. It will then help the learner study up to address their questions. Finally, it will give the user an opportunity to practice. The system will do this through a combination of AI agents instructed to do this guidance and a dedicated interface to show the user the process they are following.
+Whenever a new novel is provided, the system first runs an automated analysis, creating an initial graph of events. Afterwards, the user can directly chat with the AI to ask for changes, deeper analysis of specific areas, or for insights.
