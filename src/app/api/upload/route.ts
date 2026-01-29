@@ -63,11 +63,11 @@ export async function POST(request: NextRequest) {
     const filePath = join(dataDir, safeFileName);
     await writeFile(filePath, buffer);
 
-    logger.info('File uploaded successfully', {
+    logger.info({
       filename: safeFileName,
       originalName: file.name,
       size: file.size
-    });
+    }, 'File uploaded successfully');
 
     return NextResponse.json({
       success: true,
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.error('File upload error', { error });
+    logger.error({ error }, 'File upload error');
 
     return NextResponse.json(
       {
@@ -114,7 +114,7 @@ export async function GET() {
     });
 
   } catch (error) {
-    logger.error('Error checking upload status', { error });
+    logger.error({ error}, 'Error checking upload status');
 
     return NextResponse.json(
       {

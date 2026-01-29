@@ -1,40 +1,13 @@
 import { NextRequest } from 'next/server';
 import { loggers } from '@/lib/utils/logger';
 import type { UIMessage } from 'ai';
+import {
+  orchestratorEvents,
+  addConnection,
+  removeConnection,
+} from '@/lib/services/sse-emitter';
 
 const logger = loggers.api;
-
-// Global map to store SSE connections by filename
-const sseConnections = new Map<string, Set<ReadableStreamDefaultController<Uint8Array>>>();
-
-// Global event emitter for orchestrator messages
-class OrchestratorEventEmitter {
-  private listeners = new Map<string, Set<(message: UIMessage) => void>>();
-
-  emit(filename: string, message: UIMessage) {
-    const listeners = this.listeners.get(filename);
-    if (listeners) {
-      listeners.forEach(listener => listener(message));
-    }
-  }
-
-  addListener(filename: string, listener: (message: UIMessage) => void) {
-    if (!this.listeners.has(filename)) {
-      this.listeners.set(filename, new Set());
-    }
-    this.listeners.get(filename)!.add(listener);
-    return () => {
-      this.listeners.get(filename)?.delete(listener);
-    };
-  }
-
-  removeAllListeners(filename: string) {
-    this.listeners.delete(filename);
-  }
-}
-
-// Global instance that orchestrator will use
-export const orchestratorEvents = new OrchestratorEventEmitter();
 
 /**
  * GET /api/stream?filename=xyz
@@ -58,10 +31,7 @@ export async function GET(request: NextRequest) {
       logger.info({ filename }, 'SSE stream started');
 
       // Add this controller to the connections map
-      if (!sseConnections.has(filename)) {
-        sseConnections.set(filename, new Set());
-      }
-      sseConnections.get(filename)!.add(controller);
+      addConnection(filename, controller);
 
       // Send initial connection message (AI SDK Message format)
       const initialMessage: UIMessage = {
@@ -105,13 +75,7 @@ export async function GET(request: NextRequest) {
         logger.info({ filename }, 'SSE stream cleanup');
 
         // Remove from connections map
-        const connections = sseConnections.get(filename);
-        if (connections) {
-          connections.delete(controller);
-          if (connections.size === 0) {
-            sseConnections.delete(filename);
-          }
-        }
+        removeConnection(filename, controller);
 
         // Remove event listener
         removeListener();
@@ -164,44 +128,4 @@ export async function GET(request: NextRequest) {
       'Access-Control-Allow-Headers': 'Cache-Control',
     },
   });
-}
-
-/**
- * Helper function for orchestrator to emit messages
- * This will be imported and used by the orchestrator
- * Messages are now in AI SDK Message format
- */
-export function emitUIMessage(filename: string, message: UIMessage) {
-  logger.debug({
-    filename,
-    role: message.role,
-  }, "Emitting orchestrator message");
-  orchestratorEvents.emit(filename, message);
-}
-
-/**
- * Get active SSE connection count for a filename
- */
-export function getActiveConnections(filename: string): number {
-  const connections = sseConnections.get(filename);
-  return connections ? connections.size : 0;
-}
-
-/**
- * Close all SSE connections for a filename
- */
-export function closeConnections(filename: string) {
-  const connections = sseConnections.get(filename);
-  if (connections) {
-    connections.forEach(controller => {
-      try {
-        controller.close();
-      } catch (error) {
-        // Already closed
-      }
-    });
-    sseConnections.delete(filename);
-  }
-  orchestratorEvents.removeAllListeners(filename);
-  logger.info({ filename }, 'Closed all SSE connections');
 }

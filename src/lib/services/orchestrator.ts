@@ -22,7 +22,7 @@ let emitOrchestratorMessage:
 const initializeSSE = async () => {
   if (!emitOrchestratorMessage) {
     try {
-      const sseModule = await import('../../app/api/stream/route');
+      const sseModule = await import('../services/sse-emitter');
       emitOrchestratorMessage = sseModule.emitUIMessage;
     } catch (error) {
       logger.error({
