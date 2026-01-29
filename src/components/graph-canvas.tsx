@@ -66,7 +66,7 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
         nvlOptions={{
           layout: 'd3Force',
           allowDynamicMinZoom: true,
-          disableWebGL: false,
+          disableWebGL: true, // false requires worker script to load properly. This is a TODO
           instanceId: 'event-graph',
         }}
         mouseEventCallbacks={{

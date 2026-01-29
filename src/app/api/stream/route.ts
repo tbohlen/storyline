@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { loggers } from '@/lib/utils/logger';
+import type { UIMessage } from 'ai';
 
 const logger = loggers.api;
 
@@ -8,16 +9,16 @@ const sseConnections = new Map<string, Set<ReadableStreamDefaultController<Uint8
 
 // Global event emitter for orchestrator messages
 class OrchestratorEventEmitter {
-  private listeners = new Map<string, Set<(message: any) => void>>();
+  private listeners = new Map<string, Set<(message: UIMessage) => void>>();
 
-  emit(filename: string, message: any) {
+  emit(filename: string, message: UIMessage) {
     const listeners = this.listeners.get(filename);
     if (listeners) {
       listeners.forEach(listener => listener(message));
     }
   }
 
-  addListener(filename: string, listener: (message: any) => void) {
+  addListener(filename: string, listener: (message: UIMessage) => void) {
     if (!this.listeners.has(filename)) {
       this.listeners.set(filename, new Set());
     }
@@ -62,13 +63,17 @@ export async function GET(request: NextRequest) {
       }
       sseConnections.get(filename)!.add(controller);
 
-      // Send initial connection message
-      const initialMessage = {
-        type: 'connection',
-        agent: 'system',
-        timestamp: new Date().toISOString(),
-        message: `Connected to stream for ${filename}`,
-        data: { filename }
+      // Send initial connection message (AI SDK Message format)
+      const initialMessage: UIMessage = {
+        id: crypto.randomUUID(),
+        role: "system",
+        parts: [
+          {
+            type: "text",
+            text: `Connected to stream for ${filename}`,
+          },
+        ],
+        metadata: { filename, createdAt: new Date() },
       };
 
       try {
@@ -82,17 +87,12 @@ export async function GET(request: NextRequest) {
       // Listen for orchestrator events for this filename
       const removeListener = orchestratorEvents.addListener(filename, (message) => {
         try {
-          const sseMessage = {
-            ...message,
-            timestamp: new Date().toISOString(),
-            filename
-          };
-
+          // Message is already in AI SDK format - just send it
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(sseMessage)}\n\n`)
+            encoder.encode(`data: ${JSON.stringify(message)}\n\n`)
           );
 
-          logger.debug({ filename, type: message.type }, 'SSE message sent');
+          logger.debug({ filename, role: message.role }, 'SSE message sent');
         } catch (error) {
           logger.error({ filename, error }, 'Failed to send SSE message');
           // If stream is closed, clean up
@@ -129,12 +129,13 @@ export async function GET(request: NextRequest) {
       // Keep-alive ping every 30 seconds
       const keepAlive = setInterval(() => {
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'ping',
-            agent: 'system',
-            timestamp: new Date().toISOString(),
-            message: 'Keep-alive ping'
-          })}\n\n`));
+          const pingMessage: UIMessage = {
+            id: crypto.randomUUID(),
+            role: "system",
+            parts: [{ type: "text", text: "Keep-alive ping" }],
+            metadata: { filename, originalType: "ping", createdAt: new Date() },
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(pingMessage)}\n\n`));
         } catch (error) {
           clearInterval(keepAlive);
           cleanup();
@@ -168,17 +169,12 @@ export async function GET(request: NextRequest) {
 /**
  * Helper function for orchestrator to emit messages
  * This will be imported and used by the orchestrator
+ * Messages are now in AI SDK Message format
  */
-export function emitOrchestratorMessage(filename: string, message: {
-  type: string;
-  agent: string;
-  message: string;
-  data?: object;
-}) {
+export function emitUIMessage(filename: string, message: UIMessage) {
   logger.debug({
     filename,
-    type: message.type,
-    agent: message.agent,
+    role: message.role,
   }, "Emitting orchestrator message");
   orchestratorEvents.emit(filename, message);
 }

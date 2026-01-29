@@ -1,53 +1,49 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, CheckCircle, AlertTriangle, Bot, Zap, Database, FileText } from 'lucide-react';
+import type { UIMessage } from 'ai';
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton
+} from '@/components/ai-elements/conversation';
+import {
+  Message as MessageComponent,
+  MessageContent,
+  MessageResponse
+} from '@/components/ai-elements/message';
+import {
+  Reasoning,
+  ReasoningTrigger,
+  ReasoningContent
+} from '@/components/ai-elements/reasoning';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface ThinkingData {
-  content: string;
-}
-
-interface Message {
-  agent: string;
-  type: "thinking" | "info" | "error" | "success" | "ping";
-  message: string;
-  timestamp: string;
-  filename?: string;
-  data?: ThinkingData | unknown;
-}
+import { StorylineMessagePart } from '@/lib/utils/message-helpers';
 
 interface OrchestratorObserverProps {
   filename: string;
   className?: string;
 }
 
+/**
+ * New orchestrator observer using ai-elements components
+ * Displays messages from multiple agents (orchestrator, event-detector, timeline-resolver, etc.)
+ */
 export function OrchestratorObserver({ filename, className }: OrchestratorObserverProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<UIMessage[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error' | 'closed'>('connecting');
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
+  // SSE connection setup
   useEffect(() => {
     if (!filename) {
       setError('No filename provided');
       return;
     }
 
-    // Create SSE connection
     const eventSource = new EventSource(`/api/stream?filename=${encodeURIComponent(filename)}`);
     eventSourceRef.current = eventSource;
 
@@ -59,12 +55,18 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
 
     eventSource.onmessage = (event) => {
       try {
-        const message: Message = JSON.parse(event.data);
+        console.log("Trying to parse SSE message...");
+        const message: UIMessage = JSON.parse(event.data);
         console.log('SSE message received:', message);
 
-        // Filter out keep-alive pings
-        if (message.type !== 'ping') {
-          setMessages(prev => [...prev, message]);
+        // Filter out ping messages (check role or metadata)
+        if (
+          message.role !== "system" ||
+          message.parts.length > 1 ||
+          message.parts[0].type !== "text" ||
+          message.parts[0].text !== "Keep-alive ping"
+        ) {
+          setMessages((prev) => [...prev, message]);
         }
       } catch (error) {
         console.error('Failed to parse SSE message:', error, event.data);
@@ -85,173 +87,205 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
     };
   }, [filename]);
 
-  const getAgentIcon = (agent: string) => {
-    switch (agent.toLowerCase()) {
-      case 'orchestrator':
-        return <Zap className="h-4 w-4" />;
-      case 'event-detector':
-      case 'eventdetector':
-        return <Bot className="h-4 w-4" />;
-      case 'database':
-        return <Database className="h-4 w-4" />;
-      case 'system':
-        return <FileText className="h-4 w-4" />;
-      default:
-        return <Bot className="h-4 w-4" />;
-    }
-  };
-
-  const getAgentColor = (agent: string) => {
-    switch (agent.toLowerCase()) {
-      case 'orchestrator':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'event-detector':
-      case 'eventdetector':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'database':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'system':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      default:
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'error':
-        return <AlertTriangle className="h-3 w-3 text-red-500" />;
-      case 'success':
-      case 'completed':
-        return <CheckCircle className="h-3 w-3 text-green-500" />;
-      case 'processing':
-      case 'analyzing':
-        return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      return new Date(timestamp).toLocaleTimeString();
-    } catch (error) {
-      return timestamp;
-    }
-  };
-
   return (
     <Card className={cn("h-full flex flex-col", className)}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Analysis Progress</CardTitle>
-          <div className="flex items-center space-x-2">
-            {connectionStatus === "connecting" && (
-              <div className="flex items-center space-x-1">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                <span className="text-sm text-muted-foreground">
-                  Connecting...
-                </span>
-              </div>
-            )}
-            {connectionStatus === "connected" && (
-              <div className="flex items-center space-x-1">
-                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-green-600">Connected</span>
-              </div>
-            )}
-            {connectionStatus === "error" && (
-              <div className="flex items-center space-x-1">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                <span className="text-sm text-red-600">Connection Error</span>
-              </div>
-            )}
-          </div>
+          <ConnectionStatusBadge status={connectionStatus} />
         </div>
         <div className="text-sm text-muted-foreground">
           Processing: <span className="font-mono">{filename}</span>
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-hidden">
+      <CardContent className="flex-1 overflow-auto">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950 dark:border-red-800">
             <div className="flex items-center">
               <AlertTriangle className="h-4 w-4 text-red-500 mr-2" />
-              <span className="text-sm text-red-700">{error}</span>
+              <span className="text-sm text-red-700 dark:text-red-100">{error}</span>
             </div>
           </div>
         )}
 
-        <ScrollArea className="h-full">
-          <div className="space-y-3 pr-4">
+        <Conversation>
+          <ConversationContent>
             {messages.length === 0 && connectionStatus === "connected" && (
               <div className="text-center text-muted-foreground py-8">
-                <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <Loader2 className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
                 <p>Waiting for analysis to begin...</p>
               </div>
             )}
-
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className="flex items-start space-x-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex-shrink-0 mt-0.5">
-                  {getAgentIcon(message.agent)}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Badge
-                      variant="outline"
-                      className={cn("text-xs", getAgentColor(message.agent))}
-                    >
-                      {message.agent}
-                    </Badge>
-                    {getTypeIcon(message.type)}
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {formatTimestamp(message.timestamp)}
-                    </span>
-                  </div>
-
-                  <div className="text-sm text-foreground">
-                    {message.message}
-                  </div>
-
-                  {/* Special handling for thinking messages */}
-                  {message.type === "thinking" &&
-                    !!message.data &&
-                    typeof message.data === "object" &&
-                    "content" in message.data && (
-                      <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <div className="flex items-start space-x-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-500 mt-0.5 flex-shrink-0" />
-                          <div className="text-sm text-blue-900 dark:text-blue-100 whitespace-pre-wrap">
-                            {(message.data as ThinkingData).content}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                  {/* Regular data display for non-thinking messages */}
-                  {message.type !== "thinking" && !!message.data && (
-                    <div className="mt-2 p-2 bg-muted rounded text-xs font-mono overflow-x-auto">
-                      <pre className="whitespace-pre-wrap">
-                        {typeof message.data === "object"
-                          ? JSON.stringify(message.data, null, 2)
-                          : String(message.data)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              </div>
+            {messages.map((message) => (
+              <MessageRenderer key={message.id} message={message} />
             ))}
-
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
       </CardContent>
     </Card>
   );
+}
+
+/**
+ * Render individual messages with parts
+ */
+function MessageRenderer({ message }: { message: UIMessage }) {
+  return (
+    <MessageComponent from={message.role}>
+      <MessageContent>
+        {/* Render message parts */}
+        {message.parts.map((part, index: number) => (
+          <PartRenderer key={index} part={part as StorylineMessagePart} />
+        ))}
+      </MessageContent>
+    </MessageComponent>
+  );
+}
+
+/**
+ * Renderer for individual message parts
+ */
+function PartRenderer({ part }: { part: StorylineMessagePart }) {
+  switch (part.type) {
+    case 'text':
+      return <MessageResponse>{part.text}</MessageResponse>;
+
+    case 'reasoning':
+      return (
+        <Reasoning isStreaming={false}>
+          <ReasoningTrigger />
+          <ReasoningContent>{part.text}</ReasoningContent>
+        </Reasoning>
+      );
+
+    case 'data-status':
+      return <EventStatusRenderer part={part as DataPart} />;
+
+    default:
+      // Handle tool parts dynamically (tool-create_event, tool-find_event, etc.)
+      if (part.type.startsWith('tool-')) {
+        return <ToolInvocationRenderer part={part as ToolPart} />;
+      }
+      return null;
+  }
+}
+
+// Extract only tool parts from StorylineMessagePart
+type ToolPart = Extract<StorylineMessagePart, { type: `tool-${string}` }>;
+
+// Extract only data parts from StorylineMessagePart
+type DataPart = Extract<StorylineMessagePart, { type: `data-${string}` }>;
+
+/**
+ * Custom component for rendering tool invocations
+ */
+function ToolInvocationRenderer({ part }: { part: ToolPart }) {
+  const isComplete = part.state === 'output-available';
+  const toolName = part.type.replace('tool-', '');
+
+  return (
+    <div className={cn(
+      "mt-2 p-3 rounded-lg border",
+      isComplete
+        ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800"
+        : "bg-purple-50 border-purple-200 dark:bg-purple-950 dark:border-purple-800"
+    )}>
+      <div className="text-sm font-medium mb-1">
+        {isComplete ? '✓' : '⚙️'} {toolName}
+      </div>
+      {part.input && (
+        <div className="text-xs font-mono text-muted-foreground">
+          {JSON.stringify(part.input, null, 2)}
+        </div>
+      )}
+      {isComplete && part.output && (
+        <div className="mt-2 text-xs">
+          <div className="font-medium mb-1">Result:</div>
+          <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+            {JSON.stringify(part.output, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Custom component for event status messages
+ */
+function EventStatusRenderer({ part }: { part: DataPart }) {
+  const status = part.data?.status || 'processing';
+  const text = part.data?.text || '';
+
+  const statusStyles: Record<string, string> = {
+    'analyzing': 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800',
+    'processing': 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800',
+    'success': 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800',
+    'error': 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800',
+    'completed': 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800',
+    'event_found': 'bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800'
+  };
+
+  return (
+    <div className={cn("mt-2 p-2 rounded border", statusStyles[status] || statusStyles.processing)}>
+      <div className="text-sm capitalize">{status.replace('_', ' ')}</div>
+      {text && <div className="text-sm mt-1">{text}</div>}
+      {part.data && Object.keys(part.data).filter(k => k !== 'status' && k !== 'text').length > 0 && (
+        <pre className="mt-1 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+          {JSON.stringify(
+            Object.fromEntries(
+              Object.entries(part.data).filter(([k]) => k !== 'status' && k !== 'text')
+            ),
+            null,
+            2
+          )}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Connection status badge
+ */
+function ConnectionStatusBadge({ status }: { status: string }) {
+  switch (status) {
+    case 'connecting':
+      return (
+        <div className="flex items-center space-x-1">
+          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+          <span className="text-sm text-muted-foreground">
+            Connecting...
+          </span>
+        </div>
+      );
+
+    case 'connected':
+      return (
+        <div className="flex items-center space-x-1">
+          <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-sm text-green-600 dark:text-green-400">Connected</span>
+        </div>
+      );
+
+    case 'error':
+      return (
+        <div className="flex items-center space-x-1">
+          <AlertTriangle className="h-4 w-4 text-red-500" />
+          <span className="text-sm text-red-600 dark:text-red-400">Connection Error</span>
+        </div>
+      );
+
+    case 'closed':
+      return (
+        <div className="flex items-center space-x-1">
+          <span className="text-sm text-muted-foreground">Disconnected</span>
+        </div>
+      );
+
+    default:
+      return null;
+  }
 }

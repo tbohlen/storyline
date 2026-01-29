@@ -3,6 +3,7 @@
  * These tools are used by the event detector agent to interact with the database
  */
 
+import type { UIMessage } from 'ai';
 import { tool } from 'ai';
 import { z } from 'zod';
 import {
@@ -14,9 +15,15 @@ import {
 } from '../db/events';
 import { loggers } from '../utils/logger';
 import truncate from '../utils/truncate';
+import { createStatusMessage } from '../utils/message-helpers';
 
 const logger = loggers.database;
 
+// ============================================================================
+// ZOD SCHEMAS - Single source of truth for all tool input/output types
+// ============================================================================
+
+// Shared field definitions for event creation
 const baseFields = {
   quote: z.string()
     .min(1)
@@ -46,16 +53,16 @@ const baseFields = {
     .describe('Any explicit date mentioned in the text (e.g., "1888-04-12", "April 12, 1888"). Use ISO format YYYY-MM-DD when possible. Leave undefined if no specific date is mentioned.')
 };
 
-
-// Create two versions, one with spreadsheetId and one without
-const createEventSchema = z
+// --- create_event tool schemas ---
+const createEventInputSchema = z
   .object(baseFields)
   .refine((data) => data.charRangeEnd > data.charRangeStart, {
     message: "charRangeEnd must be greater than charRangeStart",
     path: ["charRangeEnd"],
   });
+
 // TODO: Rename spreadsheetId to masterEventId for clarity
-const createEventSchemaWithSpreadsheetId = z
+const createEventInputSchemaWithSpreadsheetId = z
   .object({
     ...baseFields,
     spreadsheetId: z
@@ -70,10 +77,132 @@ const createEventSchemaWithSpreadsheetId = z
     path: ["charRangeEnd"],
   });
 
-// Create TypeScript type from schema
-type CreateEventParams = z.infer<
-  typeof createEventSchemaWithSpreadsheetId
->;
+const createEventOutputSchema = z.object({
+  success: z.boolean(),
+  eventId: z.string(),
+  message: z.string(),
+});
+
+// --- create_relationship tool schemas ---
+const createRelationshipInputSchema = z.object({
+  fromEventId: z.string().describe('ID of the source event'),
+  toEventId: z.string().describe('ID of the target event'),
+  relationshipType: z.enum(['BEFORE', 'AFTER', 'CONCURRENT', 'IDENTICAL']).describe('Type of relationship between events'),
+  sourceText: z.string().describe('Text snippet that indicates this relationship'),
+});
+
+const createRelationshipOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+// --- find_event tool schemas ---
+const findEventInputSchema = z.object({
+  quote: z.string().optional().describe('Exact quote to search for'),
+  charRangeStart: z.number().optional().describe('Global character range start position'),
+  charRangeEnd: z.number().optional().describe('Global character range end position'),
+});
+
+const findEventOutputSchema = z.union([
+  z.object({
+    found: z.literal(true),
+    event: z.object({
+      id: z.string(),
+      quote: z.string(),
+      description: z.string(),
+      charRangeStart: z.number(),
+      charRangeEnd: z.number(),
+      approximateDate: z.string().optional(),
+      absoluteDate: z.string().optional(),
+    }),
+  }),
+  z.object({
+    found: z.literal(false),
+    message: z.string(),
+  }),
+]);
+
+// --- update_event tool schemas ---
+const updateEventInputSchema = z.object({
+  eventId: z.string().describe('ID of the event to update'),
+  description: z.string().optional().describe('Updated description'),
+  spreadsheetId: z.string().optional().describe('Master event spreadsheet ID'),
+  approximateDate: z.string().optional().describe('Approximate or inferred date'),
+  absoluteDate: z.string().optional().describe('Explicit hard date (ISO format)'),
+});
+
+const updateEventOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+// --- get_recent_events tool schemas ---
+const getRecentEventsInputSchema = z.object({
+  limit: z.number().optional().default(10).describe('Maximum number of recent events to return (default: 10, max: 50)'),
+});
+
+const getRecentEventsOutputSchema = z.object({
+  success: z.boolean(),
+  events: z.array(z.object({
+    id: z.string(),
+    quote: z.string(),
+    description: z.string(),
+    charRangeStart: z.number(),
+    charRangeEnd: z.number(),
+    approximateDate: z.string().optional(),
+    absoluteDate: z.string().optional(),
+  })),
+  count: z.number(),
+});
+
+// --- find_master_event tool schemas ---
+const findMasterEventInputSchema = z.object({
+  description: z.string().describe('Event description to search for in master events'),
+});
+
+const findMasterEventOutputSchema = z.union([
+  z.object({
+    found: z.literal(true),
+    spreadsheetId: z.string(),
+    description: z.string(),
+    category: z.string(),
+    matchConfidence: z.number(),
+    alternativeMatches: z.array(z.object({
+      spreadsheetId: z.string(),
+      description: z.string(),
+      matchConfidence: z.number(),
+    })),
+  }),
+  z.object({
+    found: z.literal(false),
+    message: z.string(),
+  }),
+]);
+
+// ============================================================================
+// EXPORTED TYPES - Inferred from Zod schemas
+// ============================================================================
+
+export type CreateEventInput = z.infer<typeof createEventInputSchemaWithSpreadsheetId>;
+export type CreateEventOutput = z.infer<typeof createEventOutputSchema>;
+
+export type CreateRelationshipInput = z.infer<typeof createRelationshipInputSchema>;
+export type CreateRelationshipOutput = z.infer<typeof createRelationshipOutputSchema>;
+
+export type FindEventInput = z.infer<typeof findEventInputSchema>;
+export type FindEventOutput = z.infer<typeof findEventOutputSchema>;
+
+export type UpdateEventInput = z.infer<typeof updateEventInputSchema>;
+export type UpdateEventOutput = z.infer<typeof updateEventOutputSchema>;
+
+export type GetRecentEventsInput = z.infer<typeof getRecentEventsInputSchema>;
+export type GetRecentEventsOutput = z.infer<typeof getRecentEventsOutputSchema>;
+
+export type FindMasterEventInput = z.infer<typeof findMasterEventInputSchema>;
+export type FindMasterEventOutput = z.infer<typeof findMasterEventOutputSchema>;
+
+// Legacy type alias for backwards compatibility
+type CreateEventParams = CreateEventInput;
 
 /**
  * Context passed to all event tools
@@ -85,12 +214,7 @@ export interface EventToolContext {
   /** Name of the novel being processed */
   novelName: string;
   /** Function to emit messages to SSE stream */
-  emitMessage: (
-    type: string,
-    agent: string,
-    message: string,
-    data?: Record<string, unknown>
-  ) => void;
+  emitMessage: (message: UIMessage) => void;
   /** Whether master events spreadsheet is enabled */
   masterEventsEnabled: boolean;
   /** Master events data from spreadsheet (if enabled) */
@@ -117,16 +241,25 @@ Do NOT create events for:
 
     // by conditionally using the WithSpreadsheetId schema, we can instruct the model provide or not provide this value
     inputSchema: context.masterEventsEnabled
-      ? createEventSchemaWithSpreadsheetId
-      : createEventSchema,
+      ? createEventInputSchemaWithSpreadsheetId
+      : createEventInputSchema,
 
-    execute: async (params: CreateEventParams) => {
+    execute: async (params: CreateEventInput) => {
       // Emit tool call message
-      context.emitMessage("tool_call", "event-detector", "Creating event", {
-        tool: "create_event",
-        quote: truncate(params.quote, 50),
-        charRange: `${params.charRangeStart}-${params.charRangeEnd}`,
-      });
+      context.emitMessage(
+        createStatusMessage(
+          'assistant',
+          'database',
+          'processing',
+          "Creating event",
+          {
+            tool: "create_event",
+            quote: truncate(params.quote, 50),
+            charRange: `${params.charRangeStart}-${params.charRangeEnd}`,
+          },
+          context.novelName
+        )
+      );
 
       try {
         // Validate character ranges
@@ -166,13 +299,22 @@ Do NOT create events for:
         });
 
         // Emit success message
-        context.emitMessage("tool_result", "event-detector", "Event created", {
-          tool: "create_event",
-          eventId,
-          quote:
-            params.quote.substring(0, 50) +
-            (params.quote.length > 50 ? "..." : ""),
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'success',
+            "Event created",
+            {
+              tool: "create_event",
+              eventId,
+              quote:
+                params.quote.substring(0, 50) +
+                (params.quote.length > 50 ? "..." : ""),
+            },
+            context.novelName
+          )
+        );
 
         return {
           success: true,
@@ -182,13 +324,17 @@ Do NOT create events for:
       } catch (error) {
         logger.error({ error, params }, "Failed to create event");
         context.emitMessage(
-          "error",
-          "event-detector",
-          "Failed to create event",
-          {
-            tool: "create_event",
-            error: String(error),
-          }
+          createStatusMessage(
+            'assistant',
+            'database',
+            'error',
+            "Failed to create event",
+            {
+              tool: "create_event",
+              error: String(error),
+            },
+            context.novelName
+          )
         );
         throw error;
       }
@@ -202,33 +348,39 @@ Do NOT create events for:
  */
 function createRelationshipTool(context: EventToolContext) {
   return tool({
-    description: `Create a temporal relationship between two events. Use this when you can determine the temporal ordering between events.
+    description: `Create a relationship between two events. Use this when you can determine the relationship between events.
 
 Relationship types:
 - BEFORE: fromEvent happens before toEvent
 - AFTER: fromEvent happens after toEvent
 - CONCURRENT: Events happen at the same time
+- IDENTICAL: Both events refer to the same occurrence (duplicate references)
 
 Guidelines:
 - You can create relationships between events you just created or events you find
-- The temporal relationship should be clear from the text
+- The relationship should be clear from the text
 - You need source text that indicates the relationship
-- Consider both explicit temporal markers ("the next day", "meanwhile") and implicit narrative flow`,
+- Consider both explicit temporal markers ("the next day", "meanwhile") and implicit narrative flow
+- Use IDENTICAL when the text clearly refers to the same event that already exists in the database`,
 
-    inputSchema: z.object({
-      fromEventId: z.string().describe('ID of the source event'),
-      toEventId: z.string().describe('ID of the target event'),
-      relationshipType: z.enum(['BEFORE', 'AFTER', 'CONCURRENT']).describe('Type of temporal relationship'),
-      sourceText: z.string().describe('Text snippet that indicates this relationship'),
-    }),
+    inputSchema: createRelationshipInputSchema,
 
-    execute: async (params) => {
-      context.emitMessage('tool_call', 'event-detector', 'Creating relationship', {
-        tool: 'create_relationship',
-        type: params.relationshipType,
-        fromId: params.fromEventId.substring(0, 8),
-        toId: params.toEventId.substring(0, 8),
-      });
+    execute: async (params: CreateRelationshipInput) => {
+      context.emitMessage(
+        createStatusMessage(
+          'assistant',
+          'database',
+          'processing',
+          'Creating relationship',
+          {
+            tool: 'create_relationship',
+            type: params.relationshipType,
+            fromId: params.fromEventId.substring(0, 8),
+            toId: params.toEventId.substring(0, 8),
+          },
+          context.novelName
+        )
+      );
 
       try {
         await createRelationship(
@@ -238,12 +390,21 @@ Guidelines:
           params.sourceText
         );
 
-        context.emitMessage('tool_result', 'event-detector', 'Relationship created', {
-          tool: 'create_relationship',
-          from: params.fromEventId.substring(0, 8),
-          to: params.toEventId.substring(0, 8),
-          type: params.relationshipType,
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'success',
+            'Relationship created',
+            {
+              tool: 'create_relationship',
+              from: params.fromEventId.substring(0, 8),
+              to: params.toEventId.substring(0, 8),
+              type: params.relationshipType,
+            },
+            context.novelName
+          )
+        );
 
         return {
           success: true,
@@ -251,10 +412,19 @@ Guidelines:
         };
       } catch (error) {
         logger.error({ error, params }, 'Failed to create relationship');
-        context.emitMessage('error', 'event-detector', 'Failed to create relationship', {
-          tool: 'create_relationship',
-          error: String(error),
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'error',
+            'Failed to create relationship',
+            {
+              tool: 'create_relationship',
+              error: String(error),
+            },
+            context.novelName
+          )
+        );
         throw error;
       }
     },
@@ -274,18 +444,23 @@ function findEventTool(context: EventToolContext) {
 
 Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`,
 
-    inputSchema: z.object({
-      quote: z.string().optional().describe('Exact quote to search for'),
-      charRangeStart: z.number().optional().describe('Global character range start position'),
-      charRangeEnd: z.number().optional().describe('Global character range end position'),
-    }),
+    inputSchema: findEventInputSchema,
 
-    execute: async (params) => {
-      context.emitMessage('tool_call', 'event-detector', 'Finding event', {
-        tool: 'find_event',
-        hasQuote: !!params.quote,
-        hasCharRange: !!(params.charRangeStart || params.charRangeEnd),
-      });
+    execute: async (params: FindEventInput) => {
+      context.emitMessage(
+        createStatusMessage(
+          'assistant',
+          'database',
+          'processing',
+          'Finding event',
+          {
+            tool: 'find_event',
+            hasQuote: !!params.quote,
+            hasCharRange: !!(params.charRangeStart || params.charRangeEnd),
+          },
+          context.novelName
+        )
+      );
 
       try {
         // Note: charRangeStart/End are already global positions when searching
@@ -297,11 +472,20 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
         });
 
         if (event) {
-          context.emitMessage('tool_result', 'event-detector', 'Event found', {
-            tool: 'find_event',
-            eventId: event.id,
-            description: event.description.substring(0, 50) + (event.description.length > 50 ? '...' : ''),
-          });
+          context.emitMessage(
+            createStatusMessage(
+              'assistant',
+              'database',
+              'success',
+              'Event found',
+              {
+                tool: 'find_event',
+                eventId: event.id,
+                description: event.description.substring(0, 50) + (event.description.length > 50 ? '...' : ''),
+              },
+              context.novelName
+            )
+          );
 
           return {
             found: true,
@@ -317,9 +501,18 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
           };
         }
 
-        context.emitMessage('tool_result', 'event-detector', 'Event not found', {
-          tool: 'find_event',
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'success',
+            'Event not found',
+            {
+              tool: 'find_event',
+            },
+            context.novelName
+          )
+        );
 
         return {
           found: false,
@@ -327,10 +520,19 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
         };
       } catch (error) {
         logger.error({ error, params }, 'Failed to find event');
-        context.emitMessage('error', 'event-detector', 'Failed to find event', {
-          tool: 'find_event',
-          error: String(error),
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'error',
+            'Failed to find event',
+            {
+              tool: 'find_event',
+              error: String(error),
+            },
+            context.novelName
+          )
+        );
         throw error;
       }
     },
@@ -345,30 +547,42 @@ function updateEventTool(context: EventToolContext) {
   return tool({
     description: `Update properties of an existing event. Use this to add dates, improve descriptions, or correct information about an event you've already created or found.`,
 
-    inputSchema: z.object({
-      eventId: z.string().describe('ID of the event to update'),
-      description: z.string().optional().describe('Updated description'),
-      spreadsheetId: z.string().optional().describe('Master event spreadsheet ID'),
-      approximateDate: z.string().optional().describe('Approximate or inferred date'),
-      absoluteDate: z.string().optional().describe('Explicit hard date (ISO format)'),
-    }),
+    inputSchema: updateEventInputSchema,
 
-    execute: async (params) => {
+    execute: async (params: UpdateEventInput) => {
       const { eventId, ...updates } = params;
 
-      context.emitMessage('tool_call', 'event-detector', 'Updating event', {
-        tool: 'update_event',
-        eventId: eventId.substring(0, 8),
-        updates: Object.keys(updates),
-      });
+      context.emitMessage(
+        createStatusMessage(
+          'assistant',
+          'database',
+          'processing',
+          'Updating event',
+          {
+            tool: 'update_event',
+            eventId: eventId.substring(0, 8),
+            updates: Object.keys(updates),
+          },
+          context.novelName
+        )
+      );
 
       try {
         await updateEventNode(eventId, updates);
 
-        context.emitMessage('tool_result', 'event-detector', 'Event updated', {
-          tool: 'update_event',
-          eventId: eventId.substring(0, 8),
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'success',
+            'Event updated',
+            {
+              tool: 'update_event',
+              eventId: eventId.substring(0, 8),
+            },
+            context.novelName
+          )
+        );
 
         return {
           success: true,
@@ -376,10 +590,19 @@ function updateEventTool(context: EventToolContext) {
         };
       } catch (error) {
         logger.error({ error, params }, 'Failed to update event');
-        context.emitMessage('error', 'event-detector', 'Failed to update event', {
-          tool: 'update_event',
-          error: String(error),
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'error',
+            'Failed to update event',
+            {
+              tool: 'update_event',
+              error: String(error),
+            },
+            context.novelName
+          )
+        );
         throw error;
       }
     },
@@ -396,17 +619,24 @@ function getRecentEventsTool(context: EventToolContext) {
 
 For example, if the current text says "the next day after the party" and you created a "party" event in a previous chunk, use this tool to find that earlier party event so you can create a relationship.`,
 
-    inputSchema: z.object({
-      limit: z.number().optional().default(10).describe('Maximum number of recent events to return (default: 10, max: 50)'),
-    }),
+    inputSchema: getRecentEventsInputSchema,
 
-    execute: async (params) => {
+    execute: async (params: GetRecentEventsInput) => {
       const limit = Math.min(params.limit || 10, 50); // Cap at 50 to avoid overwhelming the context
 
-      context.emitMessage('tool_call', 'event-detector', 'Fetching recent events', {
-        tool: 'get_recent_events',
-        limit,
-      });
+      context.emitMessage(
+        createStatusMessage(
+          'assistant',
+          'database',
+          'processing',
+          'Fetching recent events',
+          {
+            tool: 'get_recent_events',
+            limit,
+          },
+          context.novelName
+        )
+      );
 
       try {
         const allEvents = await getAllEvents(context.novelName);
@@ -416,10 +646,19 @@ For example, if the current text says "the next day after the party" and you cre
           .filter(e => e.charRangeEnd < context.globalStartPosition)
           .slice(-limit); // Get last N events
 
-        context.emitMessage('tool_result', 'event-detector', `Found ${recentEvents.length} recent events`, {
-          tool: 'get_recent_events',
-          count: recentEvents.length,
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'success',
+            `Found ${recentEvents.length} recent events`,
+            {
+              tool: 'get_recent_events',
+              count: recentEvents.length,
+            },
+            context.novelName
+          )
+        );
 
         return {
           success: true,
@@ -436,10 +675,19 @@ For example, if the current text says "the next day after the party" and you cre
         };
       } catch (error) {
         logger.error({ error, params }, 'Failed to get recent events');
-        context.emitMessage('error', 'event-detector', 'Failed to get recent events', {
-          tool: 'get_recent_events',
-          error: String(error),
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'error',
+            'Failed to get recent events',
+            {
+              tool: 'get_recent_events',
+              error: String(error),
+            },
+            context.novelName
+          )
+        );
         throw error;
       }
     },
@@ -456,21 +704,37 @@ function findMasterEventTool(context: EventToolContext) {
 
 This is useful during timeline resolution when you want to categorize events by linking them to master event types.`,
 
-    inputSchema: z.object({
-      description: z.string().describe('Event description to search for in master events'),
-    }),
+    inputSchema: findMasterEventInputSchema,
 
-    execute: async (params) => {
-      context.emitMessage('tool_call', 'timeline-resolver', 'Searching for master event', {
-        tool: 'find_master_event',
-        description: params.description.substring(0, 50),
-      });
+    execute: async (params: FindMasterEventInput) => {
+      context.emitMessage(
+        createStatusMessage(
+          'assistant',
+          'database',
+          'processing',
+          'Searching for master event',
+          {
+            tool: 'find_master_event',
+            description: params.description.substring(0, 50),
+          },
+          context.novelName
+        )
+      );
 
       try {
         if (!context.masterEventsEnabled || !context.masterEvents || context.masterEvents.length === 0) {
-          context.emitMessage('tool_result', 'timeline-resolver', 'Master events not available', {
-            tool: 'find_master_event',
-          });
+          context.emitMessage(
+            createStatusMessage(
+              'assistant',
+              'database',
+              'success',
+              'Master events not available',
+              {
+                tool: 'find_master_event',
+              },
+              context.novelName
+            )
+          );
           return {
             found: false,
             message: 'Master events spreadsheet is not enabled or empty',
@@ -496,9 +760,18 @@ This is useful during timeline resolution when you want to categorize events by 
           .sort((a, b) => b.matchScore - a.matchScore);
 
         if (matches.length === 0) {
-          context.emitMessage('tool_result', 'timeline-resolver', 'No matching master event found', {
-            tool: 'find_master_event',
-          });
+          context.emitMessage(
+            createStatusMessage(
+              'assistant',
+              'database',
+              'success',
+              'No matching master event found',
+              {
+                tool: 'find_master_event',
+              },
+              context.novelName
+            )
+          );
           return {
             found: false,
             message: 'No matching master event found',
@@ -507,11 +780,20 @@ This is useful during timeline resolution when you want to categorize events by 
 
         const bestMatch = matches[0];
 
-        context.emitMessage('tool_result', 'timeline-resolver', 'Found master event match', {
-          tool: 'find_master_event',
-          spreadsheetId: bestMatch.masterEvent.id,
-          confidence: bestMatch.matchScore,
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'success',
+            'Found master event match',
+            {
+              tool: 'find_master_event',
+              spreadsheetId: bestMatch.masterEvent.id,
+              confidence: bestMatch.matchScore,
+            },
+            context.novelName
+          )
+        );
 
         return {
           found: true,
@@ -527,10 +809,19 @@ This is useful during timeline resolution when you want to categorize events by 
         };
       } catch (error) {
         logger.error({ error, params }, 'Failed to find master event');
-        context.emitMessage('error', 'timeline-resolver', 'Failed to find master event', {
-          tool: 'find_master_event',
-          error: String(error),
-        });
+        context.emitMessage(
+          createStatusMessage(
+            'assistant',
+            'database',
+            'error',
+            'Failed to find master event',
+            {
+              tool: 'find_master_event',
+              error: String(error),
+            },
+            context.novelName
+          )
+        );
         throw error;
       }
     },

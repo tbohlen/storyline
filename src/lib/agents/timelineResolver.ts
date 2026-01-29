@@ -1,8 +1,15 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { ToolLoopAgent } from "ai";
+import type { UIMessage } from "ai";
 import { createEventTools } from "../tools/event-tools";
 import { EventNode, getBatchRelationships } from "../db/events";
 import { loggers } from "../utils/logger";
+import {
+  createStatusMessage,
+  createToolCallMessage,
+  createToolResultMessage,
+  createReasoningMessage,
+} from "../utils/message-helpers";
 
 const logger = loggers.timeline;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
@@ -16,21 +23,11 @@ export class TimelineResolverAgent {
   private masterEvents: Record<string, string>[] = [];
   private masterEventsEnabled: boolean = false;
   private systemPrompt: string = "";
-  private emitMessage: (
-    type: string,
-    agent: string,
-    message: string,
-    data?: Record<string, unknown>
-  ) => void;
+  private emitMessage: (message: UIMessage) => void;
 
   constructor(
     private novelName: string,
-    emitMessage: (
-      type: string,
-      agent: string,
-      message: string,
-      data?: Record<string, unknown>
-    ) => void
+    emitMessage: (message: UIMessage) => void
   ) {
     this.emitMessage = emitMessage;
   }
@@ -115,6 +112,7 @@ RELATIONSHIP TYPES:
 - BEFORE: First event happens before second event
 - AFTER: First event happens after second event
 - CONCURRENT: Events happen at the same time
+- IDENTICAL: Events refer to the same occurrence (duplicate references)
 
 WORKFLOW:
 1. Read the context text carefully
@@ -123,12 +121,13 @@ WORKFLOW:
 4. For each pair of events you can relate:
    - Use create_relationship with the supporting text
    - Create ALL relationships you find (even if contradictory)
+   - If events clearly refer to the same occurrence, mark them as IDENTICAL
 5. If you can infer dates from the context, use update_event to add them
 6. If master events are enabled, use find_master_event and update_event to link events
 7. Think through your reasoning step by step
 
 TOOLS AVAILABLE:
-- create_relationship: Link two events with temporal relationship (BEFORE, AFTER, or CONCURRENT)
+- create_relationship: Link two events with a relationship (BEFORE, AFTER, CONCURRENT, or IDENTICAL for duplicates)
 - update_event: Add dates or master event links to an event
 - find_master_event: Search for matching master event types
 
@@ -162,13 +161,17 @@ Remember: Your job is to document what the text says, not to resolve contradicti
       );
 
       this.emitMessage(
-        "analyzing",
-        "timeline-resolver",
-        `Analyzing batch of ${events.length} events`,
-        {
-          eventCount: events.length,
-          contextLength: contextText.length,
-        }
+        createStatusMessage(
+          'assistant',
+          'timeline-resolver',
+          'analyzing',
+          `Analyzing batch of ${events.length} events`,
+          {
+            eventCount: events.length,
+            contextLength: contextText.length,
+          },
+          this.novelName
+        )
       );
 
       // Get existing relationships for these events
@@ -237,45 +240,67 @@ Analyze this context and establish temporal relationships between the events. Re
           finishReason,
           usage,
         }) => {
-          this.emitMessage(
-            "step",
-            "timeline-resolver",
-            "Agent step completed",
-            {
-              finishReason,
-              toolCallCount: toolCalls?.length || 0,
-              toolResultCount: toolResults?.length || 0,
-              usage,
-            }
-          );
+          // Emit AI reasoning if present (emit first for better flow)
+          if (text && text.trim()) {
+            this.emitMessage(
+              createReasoningMessage(
+                'assistant',
+                'timeline-resolver',
+                text.substring(0, 500) + (text.length > 500 ? "..." : ""),
+                this.novelName
+              )
+            );
+          }
 
           // Emit each tool call
           toolCalls?.forEach((tc) => {
-            if (tc) {
+            if (tc && 'args' in tc) {
               this.emitMessage(
-                "tool_call",
-                "timeline-resolver",
-                `Calling ${tc.toolName}`,
-                {
-                  toolName: tc.toolName,
-                  args: "args" in tc ? tc.args : undefined,
-                }
+                createToolCallMessage(
+                  'assistant',
+                  'timeline-resolver',
+                  tc.toolCallId,
+                  tc.toolName,
+                  tc.args as Record<string, unknown>,
+                  this.novelName
+                )
               );
             }
           });
 
-          // Emit AI reasoning if present
-          if (text && text.trim()) {
-            this.emitMessage(
-              "thinking",
-              "timeline-resolver",
-              "Agent reasoning",
+          // Emit each tool result
+          toolResults?.forEach((tr) => {
+            if (tr && 'args' in tr) {
+              this.emitMessage(
+                createToolResultMessage(
+                  'assistant',
+                  'timeline-resolver',
+                  tr.toolCallId,
+                  tr.toolName,
+                  tr.args as Record<string, unknown>,
+                  tr.output,
+                  this.novelName
+                )
+              );
+            }
+          });
+
+          // Emit step completion info
+          this.emitMessage(
+            createStatusMessage(
+              'assistant',
+              'timeline-resolver',
+              'completed',
+              "Agent step completed",
               {
-                content:
-                  text.substring(0, 500) + (text.length > 500 ? "..." : ""),
-              }
-            );
-          }
+                finishReason,
+                toolCallCount: toolCalls?.length || 0,
+                toolResultCount: toolResults?.length || 0,
+                usage,
+              },
+              this.novelName
+            )
+          );
         },
       });
 
@@ -319,14 +344,18 @@ Analyze this context and establish temporal relationships between the events. Re
       );
 
       this.emitMessage(
-        "result",
-        "timeline-resolver",
-        `Batch analysis complete: ${relationshipsCreated} relationships, ${datesAdded} dates, ${masterEventsLinked} master events`,
-        {
-          relationshipsCreated,
-          datesAdded,
-          masterEventsLinked,
-        }
+        createStatusMessage(
+          'assistant',
+          'timeline-resolver',
+          'success',
+          `Batch analysis complete: ${relationshipsCreated} relationships, ${datesAdded} dates, ${masterEventsLinked} master events`,
+          {
+            relationshipsCreated,
+            datesAdded,
+            masterEventsLinked,
+          },
+          this.novelName
+        )
       );
 
       return {
@@ -337,12 +366,16 @@ Analyze this context and establish temporal relationships between the events. Re
     } catch (error) {
       logger.error({ error, eventCount: events.length }, "Failed to analyze batch");
       this.emitMessage(
-        "error",
-        "timeline-resolver",
-        `Failed to analyze batch: ${error}`,
-        {
-          error: String(error),
-        }
+        createStatusMessage(
+          'assistant',
+          'timeline-resolver',
+          'error',
+          `Failed to analyze batch: ${error}`,
+          {
+            error: String(error),
+          },
+          this.novelName
+        )
       );
       throw new Error(`Failed to analyze batch: ${error}`);
     }

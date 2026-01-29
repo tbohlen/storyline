@@ -54,6 +54,7 @@ src/
 
 ## Development Notes
 
+- NEVER use the "any" Typescript type. Our typechecker does not allow this.
 - Project uses App Router (not Pages Router)
 - Geist Sans and Geist Mono fonts pre-configured
 - No testing framework currently configured

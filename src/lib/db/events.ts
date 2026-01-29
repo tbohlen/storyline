@@ -99,17 +99,17 @@ export async function createEventNode(params: {
 }
 
 /**
- * Creates a temporal relationship between two events
+ * Creates a relationship between two events
  * @param {string} fromEventId - Source event ID
  * @param {string} toEventId - Target event ID
- * @param {string} relationshipType - BEFORE, AFTER, or CONCURRENT
+ * @param {string} relationshipType - BEFORE, AFTER, CONCURRENT, or IDENTICAL (same occurrence)
  * @param {string} sourceText - Text snippet that implies this relationship
  * @returns {Promise<void>}
  */
 export async function createRelationship(
   fromEventId: string,
   toEventId: string,
-  relationshipType: 'BEFORE' | 'AFTER' | 'CONCURRENT',
+  relationshipType: 'BEFORE' | 'AFTER' | 'CONCURRENT' | 'IDENTICAL',
   sourceText: string
 ): Promise<void> {
   try {
@@ -121,7 +121,7 @@ export async function createRelationship(
     }, 'Creating relationship');
 
     // Validate relationship type
-    const validTypes = ['BEFORE', 'AFTER', 'CONCURRENT'];
+    const validTypes = ['BEFORE', 'AFTER', 'CONCURRENT', 'IDENTICAL'];
     if (!validTypes.includes(relationshipType)) {
       throw new Error(`Invalid relationship type: ${relationshipType}. Must be one of: ${validTypes.join(', ')}`);
     }

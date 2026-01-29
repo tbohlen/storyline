@@ -49,7 +49,7 @@ export async function testConnection(): Promise<boolean> {
     session = driver.session();
 
     // Run a simple query to test connectivity
-    const result: Result = await session.run('RETURN 1 as test');
+    const result = await session.run('RETURN 1 as test');
 
     if (result.records.length > 0 && result.records[0].get('test') === 1) {
       logger.info('Neo4j database connection test successful');
@@ -85,7 +85,7 @@ export function createSession(): Session {
  */
 export async function executeQuery(
   cypher: string,
-  parameters: Record<string, any> = {}
+  parameters: Record<string, unknown> = {}
 ): Promise<Result> {
   const session = createSession();
 

@@ -5,20 +5,17 @@ import { initializeDatabase } from './database';
 import { getAllEvents } from '../db/events';
 import { readCsv } from './fileParser';
 import { loggers } from '../utils/logger';
+import type { UIMessage } from 'ai';
+import {
+  createTextMessage,
+  createStatusMessage,
+} from '../utils/message-helpers';
 
 const logger = loggers.orchestrator;
 
-// Import SSE emitter function
+// Import SSE emitter function - now uses AI SDK Message format
 let emitOrchestratorMessage:
-  | ((
-      filename: string,
-      message: {
-        type: string;
-        agent: string;
-        message: string;
-        data?: Record<string, unknown>;
-      }
-    ) => void)
+  | ((filename: string, message: UIMessage) => void)
   | null = null;
 
 // Dynamic import to avoid circular dependency issues
@@ -26,7 +23,7 @@ const initializeSSE = async () => {
   if (!emitOrchestratorMessage) {
     try {
       const sseModule = await import('../../app/api/stream/route');
-      emitOrchestratorMessage = sseModule.emitOrchestratorMessage;
+      emitOrchestratorMessage = sseModule.emitUIMessage;
     } catch (error) {
       logger.error({
         error: error instanceof Error ? error.message : String(error),
@@ -127,19 +124,14 @@ export class Orchestrator {
 
   /**
    * Emits a message to the SSE stream
-   * @param {string} type - Message type
-   * @param {string} agent - Agent name
-   * @param {string} message - Message content
-   * @param {Record<string, unknown>} data - Optional additional data
+   * Messages are now in AI SDK Message format
+   * @param {UIMessage} message - AI SDK Message to emit
    */
-  private emitMessage(type: string, agent: string, message: string, data?: Record<string, unknown>): void {
+  private emitMessage(message: UIMessage): void {
     if (emitOrchestratorMessage) {
-      emitOrchestratorMessage(this.filename, {
-        type,
-        agent,
-        message,
-        data,
-      });
+      emitOrchestratorMessage(this.filename, message);
+    } else {
+      console.log("ERROR!! No emitOrchestratorMessage function available");
     }
   }
 
@@ -149,7 +141,9 @@ export class Orchestrator {
    */
   async initialize(): Promise<void> {
     try {
-      this.emitMessage("status", "orchestrator", "Initializing AI...");
+      this.emitMessage(
+        createStatusMessage('system', 'orchestrator', 'analyzing', 'Initializing AI...', undefined, this.filename)
+      );
       logger.info("Initializing orchestrator services");
 
       // Initialize database schema
@@ -176,21 +170,30 @@ export class Orchestrator {
       }
 
       this.emitMessage(
-        "success",
-        "orchestrator",
-        "AI initialization complete",
-        {
-          totalCharacters: this.stats.totalCharacters,
-          chunkSize: this.config.chunkSize,
-          overlapSize: this.config.overlapSize,
-        }
+        createStatusMessage('system', 
+          'orchestrator',
+          'success',
+          'AI initialization complete',
+          {
+            totalCharacters: this.stats.totalCharacters,
+            chunkSize: this.config.chunkSize,
+            overlapSize: this.config.overlapSize,
+          },
+          this.filename
+        )
       );
       logger.info("Orchestrator initialization complete");
     } catch (error) {
       const errorMessage = `Initialization failed: ${error}`;
-      this.emitMessage("error", "orchestrator", errorMessage, {
-        error: String(error),
-      });
+      this.emitMessage(
+        createStatusMessage('system', 
+          'orchestrator',
+          'error',
+          errorMessage,
+          { error: String(error) },
+          this.filename
+        )
+      );
       logger.error(`Failed to initialize orchestrator: ${error}`);
       this.stats.errors.push(errorMessage);
       throw new Error(`Orchestrator initialization failed: ${error}`);
@@ -214,14 +217,17 @@ export class Orchestrator {
       this.stats.errors = [];
 
       this.emitMessage(
-        "status",
-        "orchestrator",
-        `Starting novel analysis - ${this.stats.totalCharacters} characters`,
-        {
-          totalCharacters: this.stats.totalCharacters,
-          chunkSize: this.config.chunkSize,
-          overlapSize: this.config.overlapSize,
-        }
+        createStatusMessage('system', 
+          'orchestrator',
+          'analyzing',
+          `Starting novel analysis - ${this.stats.totalCharacters} characters`,
+          {
+            totalCharacters: this.stats.totalCharacters,
+            chunkSize: this.config.chunkSize,
+            overlapSize: this.config.overlapSize,
+          },
+          this.filename
+        )
       );
       logger.info(
         `Starting novel processing - totalCharacters: ${this.stats.totalCharacters}, chunkSize: ${this.config.chunkSize}, overlapSize: ${this.config.overlapSize}`
@@ -235,10 +241,18 @@ export class Orchestrator {
           await this.processNextChunk();
         } catch (error) {
           const errorMsg = `Failed to process chunk at position ${this.novelReader.getCurrentPosition()}: ${error}`;
-          this.emitMessage("error", "orchestrator", errorMsg, {
-            position: this.novelReader.getCurrentPosition(),
-            error: String(error),
-          });
+          this.emitMessage(
+            createStatusMessage('system', 
+              'orchestrator',
+              'error',
+              errorMsg,
+              {
+                position: this.novelReader.getCurrentPosition(),
+                error: String(error),
+              },
+              this.filename
+            )
+          );
           logger.error(errorMsg);
           this.stats.errors.push(errorMsg);
 
@@ -255,9 +269,13 @@ export class Orchestrator {
       // After all chunks are processed, resolve timeline relationships
       logger.info("Event detection complete - starting timeline resolution");
       this.emitMessage(
-        "status",
-        "orchestrator",
-        "Event detection complete - starting timeline resolution"
+        createStatusMessage('system', 
+          'orchestrator',
+          'analyzing',
+          'Event detection complete - starting timeline resolution',
+          undefined,
+          this.filename
+        )
       );
 
       await this.resolveTimeline();
@@ -270,16 +288,19 @@ export class Orchestrator {
       const finalStats = { ...this.stats };
 
       this.emitMessage(
-        "completed",
-        "orchestrator",
-        `Novel analysis complete!`,
-        {
-          chunksProcessed: this.stats.chunksProcessed,
-          eventsFound: this.stats.eventsFound,
-          errors: this.stats.errors.length,
-          duration: duration,
-          finalStats,
-        }
+        createStatusMessage('system', 
+          'orchestrator',
+          'completed',
+          `Novel analysis complete!`,
+          {
+            chunksProcessed: this.stats.chunksProcessed,
+            eventsFound: this.stats.eventsFound,
+            errors: this.stats.errors.length,
+            duration: duration,
+            finalStats,
+          },
+          this.filename
+        )
       );
       logger.info(`Novel processing complete - chunksProcessed: ${this.stats.chunksProcessed}, eventsFound: ${this.stats.eventsFound}, errors: ${this.stats.errors.length}, duration: ${duration}ms`);
 
@@ -288,7 +309,15 @@ export class Orchestrator {
     } catch (error) {
       this.stats.processing = false;
       this.stats.endTime = new Date();
-      this.emitMessage('error', 'orchestrator', `Novel processing failed: ${error}`, { error: String(error) });
+      this.emitMessage(
+        createStatusMessage('system', 
+          'orchestrator',
+          'error',
+          `Novel processing failed: ${error}`,
+          { error: String(error) },
+          this.filename
+        )
+      );
       logger.error(`Novel processing failed: ${error}`);
       this.stats.errors.push(`Processing failed: ${error}`);
       throw error;
@@ -318,13 +347,16 @@ export class Orchestrator {
 
     // Analyze chunk for events
     this.emitMessage(
-      "analyzing",
-      "event-detector",
-      `Analyzing chunk ${chunkNumber} for events`,
-      {
-        chunkLength: chunkData.text.length,
-        preview,
-      }
+      createStatusMessage('system', 
+        'event-detector',
+        'analyzing',
+        `Analyzing chunk ${chunkNumber} for events`,
+        {
+          chunkLength: chunkData.text.length,
+          preview,
+        },
+        this.filename
+      )
     );
 
     const result = await this.eventDetector.simpleAnalysis(
@@ -336,9 +368,11 @@ export class Orchestrator {
     // TODO: Confirm that these no event found and event found parsing logics are correct with our new agent-based approach.
     if (result === "no event found") {
       this.emitMessage(
-        "result",
-        "event-detector",
-        `No events found in chunk ${chunkNumber}`
+        createTextMessage(
+          'assistant',
+          'event-detector',
+          `No events found in chunk ${chunkNumber}`
+        )
       );
       logger.debug(`No events found in chunk ${this.stats.chunksProcessed + 1}`);
 
@@ -359,14 +393,17 @@ export class Orchestrator {
       if (eventCount > 0) {
         this.stats.eventsFound += eventCount;
         this.emitMessage(
-          "event_found",
-          "event-detector",
-          `Found ${eventCount} event(s) in chunk ${chunkNumber}`,
-          {
-            eventCount,
-            chunkNumber,
-            result: resultPreview,
-          }
+          createStatusMessage('system', 
+            'event-detector',
+            'event_found',
+            `Found ${eventCount} event(s) in chunk ${chunkNumber}`,
+            {
+              eventCount,
+              chunkNumber,
+              result: resultPreview,
+            },
+            this.filename
+          )
         );
       }
 
@@ -386,12 +423,20 @@ export class Orchestrator {
     this.stats.progress = this.novelReader.getProgress();
 
     // Emit progress update
-    this.emitMessage('progress', 'orchestrator', `Chunk ${chunkNumber} processed`, {
-      chunksProcessed: this.stats.chunksProcessed,
-      eventsFound: this.stats.eventsFound,
-      progress: this.stats.progress,
-      currentPosition: this.stats.currentPosition
-    });
+    this.emitMessage(
+      createStatusMessage('system', 
+        'orchestrator',
+        'processing',
+        `Chunk ${chunkNumber} processed`,
+        {
+          chunksProcessed: this.stats.chunksProcessed,
+          eventsFound: this.stats.eventsFound,
+          progress: this.stats.progress,
+          currentPosition: this.stats.currentPosition
+        },
+        this.filename
+      )
+    );
 
     logger.debug(`Chunk processing complete - chunksProcessed: ${this.stats.chunksProcessed}, progress: ${this.stats.progress}%, currentPosition: ${this.stats.currentPosition}`);
   }
@@ -404,12 +449,15 @@ export class Orchestrator {
   private async resolveTimeline(): Promise<void> {
     try {
       this.emitMessage(
-        "status",
-        "orchestrator",
-        "Starting timeline resolution",
-        {
-          novelName: this.novelReader.getFilename(),
-        }
+        createStatusMessage('system', 
+          'orchestrator',
+          'analyzing',
+          'Starting timeline resolution',
+          {
+            novelName: this.novelReader.getFilename(),
+          },
+          this.filename
+        )
       );
       logger.info("Starting timeline resolution pass");
 
@@ -418,9 +466,11 @@ export class Orchestrator {
 
       if (allEvents.length === 0) {
         this.emitMessage(
-          "info",
-          "orchestrator",
-          "No events found - skipping timeline resolution"
+          createTextMessage(
+            'system',
+            'orchestrator',
+            'No events found - skipping timeline resolution'
+          )
         );
         logger.info("No events found - skipping timeline resolution");
         return;
@@ -466,13 +516,16 @@ export class Orchestrator {
       );
 
       this.emitMessage(
-        "status",
-        "orchestrator",
-        `Analyzing ${batches.length} batches of events`,
-        {
-          batchCount: batches.length,
-          eventCount: allEvents.length,
-        }
+        createStatusMessage('system', 
+          'orchestrator',
+          'analyzing',
+          `Analyzing ${batches.length} batches of events`,
+          {
+            batchCount: batches.length,
+            eventCount: allEvents.length,
+          },
+          this.filename
+        )
       );
 
       // Initialize timeline resolver
@@ -512,14 +565,17 @@ export class Orchestrator {
 
         try {
           this.emitMessage(
-            "analyzing",
-            "orchestrator",
-            `Processing batch ${batchNumber}/${batches.length}`,
-            {
-              batchNumber,
-              totalBatches: batches.length,
-              eventsInBatch: batch.length,
-            }
+            createStatusMessage('system', 
+              'orchestrator',
+              'analyzing',
+              `Processing batch ${batchNumber}/${batches.length}`,
+              {
+                batchNumber,
+                totalBatches: batches.length,
+                eventsInBatch: batch.length,
+              },
+              this.filename
+            )
           );
 
           logger.debug(
@@ -567,17 +623,20 @@ export class Orchestrator {
           );
 
           this.emitMessage(
-            "progress",
-            "orchestrator",
-            `Batch ${batchNumber}/${batches.length} complete`,
-            {
-              batchNumber,
-              totalBatches: batches.length,
-              progress: Math.round((batchNumber / batches.length) * 100),
-              relationshipsCreated: result.relationshipsCreated,
-              datesAdded: result.datesAdded,
-              masterEventsLinked: result.masterEventsLinked,
-            }
+            createStatusMessage('system', 
+              'orchestrator',
+              'processing',
+              `Batch ${batchNumber}/${batches.length} complete`,
+              {
+                batchNumber,
+                totalBatches: batches.length,
+                progress: Math.round((batchNumber / batches.length) * 100),
+                relationshipsCreated: result.relationshipsCreated,
+                datesAdded: result.datesAdded,
+                masterEventsLinked: result.masterEventsLinked,
+              },
+              this.filename
+            )
           );
         } catch (error) {
           logger.error(
@@ -585,13 +644,16 @@ export class Orchestrator {
             "Failed to process batch"
           );
           this.emitMessage(
-            "error",
-            "orchestrator",
-            `Failed to process batch ${batchNumber}: ${error}`,
-            {
-              batchNumber,
-              error: String(error),
-            }
+            createStatusMessage('system', 
+              'orchestrator',
+              'error',
+              `Failed to process batch ${batchNumber}: ${error}`,
+              {
+                batchNumber,
+                error: String(error),
+              },
+              this.filename
+            )
           );
           // Continue with next batch despite error
         }
@@ -608,25 +670,31 @@ export class Orchestrator {
       );
 
       this.emitMessage(
-        "completed",
-        "orchestrator",
-        "Timeline resolution complete",
-        {
-          batchesProcessed: batches.length,
-          relationshipsCreated: totalRelationships,
-          datesAdded: totalDates,
-          masterEventsLinked: totalMasterEvents,
-        }
+        createStatusMessage('system', 
+          'orchestrator',
+          'completed',
+          "Timeline resolution complete",
+          {
+            batchesProcessed: batches.length,
+            relationshipsCreated: totalRelationships,
+            datesAdded: totalDates,
+            masterEventsLinked: totalMasterEvents,
+          },
+          this.filename
+        )
       );
     } catch (error) {
       logger.error({ error }, "Timeline resolution failed");
       this.emitMessage(
-        "error",
-        "orchestrator",
-        `Timeline resolution failed: ${error}`,
-        {
-          error: String(error),
-        }
+        createStatusMessage('system', 
+          'orchestrator',
+          'error',
+          `Timeline resolution failed: ${error}`,
+          {
+            error: String(error),
+          },
+          this.filename
+        )
       );
       throw new Error(`Timeline resolution failed: ${error}`);
     }

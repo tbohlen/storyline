@@ -69,9 +69,35 @@ export function GraphVisualization({ filename, className }: GraphVisualizationPr
       try {
         const message = JSON.parse(event.data);
 
-        // Refresh graph when new events are detected or processing completes
-        if (message.type === 'result' || message.type === 'completed') {
-          fetchGraphData();
+        // Check if message has parts (UIMessage format)
+        if (message.parts && Array.isArray(message.parts)) {
+          for (const part of message.parts) {
+            // Refresh graph when events or relationships are created
+            if (
+              part.type === 'tool-create_event' &&
+              part.state === 'output-available'
+            ) {
+              fetchGraphData();
+              break;
+            }
+
+            if (
+              part.type === 'tool-create_relationship' &&
+              part.state === 'output-available'
+            ) {
+              fetchGraphData();
+              break;
+            }
+
+            // Refresh when processing completes
+            if (
+              part.type === 'data-status' &&
+              part.data?.status === 'completed'
+            ) {
+              fetchGraphData();
+              break;
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to parse SSE message:', error);

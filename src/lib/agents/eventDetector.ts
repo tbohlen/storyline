@@ -3,6 +3,13 @@ import { ToolLoopAgent } from "ai";
 import { createEventTools } from "../tools/event-tools";
 import { readCsv } from "../services/fileParser";
 import { loggers } from "../utils/logger";
+import type { UIMessage } from "ai";
+import {
+  createStatusMessage,
+  createToolCallMessage,
+  createToolResultMessage,
+  createReasoningMessage,
+} from "../utils/message-helpers";
 
 const logger = loggers.eventDetector;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
@@ -16,21 +23,11 @@ export class EventDetectorAgent {
   private masterEvents: Record<string, string>[] = [];
   private masterEventsEnabled: boolean = false;
   private systemPrompt: string = "";
-  private emitMessage: (
-    type: string,
-    agent: string,
-    message: string,
-    data?: Record<string, unknown>
-  ) => void;
+  private emitMessage: (message: UIMessage) => void;
 
   constructor(
     private novelName: string,
-    emitMessage: (
-      type: string,
-      agent: string,
-      message: string,
-      data?: Record<string, unknown>
-    ) => void
+    emitMessage: (message: UIMessage) => void
   ) {
     this.emitMessage = emitMessage;
   }
@@ -75,7 +72,9 @@ export class EventDetectorAgent {
    * @returns {string} The system prompt
    */
   private buildSystemPrompt(): string {
-    let prompt = `You are an Event Detection Agent analyzing novel text to identify significant events and their temporal relationships.
+    let prompt = `You are an Event Detection Agent analyzing the text of a novel to identify significant events and their temporal relationships. You are creating a comprehensive timeline of the fictional world of the novel. Don't constrain yourself to events that occur in the present tense in the novel. Also note important events in the characters' backstories, flashbacks, and other contextual information.
+
+    Please be careful to only note events that actually occur, not predictions of the future or assumptions by other characters.
 
 Each message to you will be a chunk of text from the novel. There will be NO additional instructions provided in the message. Everything you receive is directly from the novel.
 `;
@@ -94,8 +93,9 @@ ${eventsList}
 
     prompt += `
 YOUR TASK:
-1. Identify significant events in the provided text chunk
-2. For each event, use create_event tool with:
+1. Read and analyze the text chunk carefully
+2. Identify significant events in the provided text chunk, including flashbacks, backstory, and contextual events
+3. For each event, use create_event tool with:
    - Exact quote from the text
    - Clear description with context
    - Character positions within THIS chunk (0-based, relative to chunk start)`;
@@ -108,15 +108,18 @@ YOUR TASK:
 
     prompt += `
    - Any dates found in the text
-
-3. Establish temporal relationships between events:
+4. If you know of any existing events in the database that are the same as the newly identified event, use the create_relationship tool to link them as IDENTICAL.
+5. Establish temporal relationships between events:
    - Between events in THIS chunk (if obvious from the text)
    - Between events in this chunk and recent events from earlier chunks
    - Use get_recent_events to find earlier events if you see temporal references
    - Use create_relationship to establish temporal ordering
+6. If you see references to earlier events (like "the next day after X"), use get_recent_events to find them
+7. Create relationships using create_relationship tool
 
 IMPORTANT GUIDELINES:
-- Only identify events that are significant to the story timeline
+- Think through your analysis step by step and explain your reasoning
+- Only identify events that are significant to the story timeline. Events should be major. We expect an average of 1 event per 1000-character chunk.
 - Events should be specific actions, discoveries, arrivals, confrontations, etc.`;
 
     // Only mention master event types if enabled
@@ -130,23 +133,14 @@ IMPORTANT GUIDELINES:
 - Look for temporal markers: "the next day", "meanwhile", "earlier", dates, "after", "before"
 - If the text references earlier events, use get_recent_events to find them and create relationships
 - Create relationships whenever you can determine temporal ordering from the text
-- If no significant events are found, simply respond with your reasoning
+- If no significant events are found, simply respond with "no events found"
 
 TOOLS AVAILABLE:
 - create_event: Create a new event node
-- create_relationship: Link two events with temporal relationship (BEFORE, AFTER, or CONCURRENT)
+- create_relationship: Link two events with a relationship (BEFORE, AFTER, CONCURRENT, or IDENTICAL for duplicates)
 - find_event: Check if an event already exists
 - update_event: Update an existing event's properties
-- get_recent_events: Get recent events from earlier in the novel for cross-chunk relationships
-
-WORKFLOW:
-1. Read and analyze the text chunk carefully
-2. Identify significant events
-3. Create events using create_event tool
-4. Look for temporal relationships within the chunk
-5. If you see references to earlier events (like "the next day after X"), use get_recent_events to find them
-6. Create relationships using create_relationship tool
-7. Think through your analysis step by step and explain your reasoning`;
+- get_recent_events: Get recent events from earlier in the novel for cross-chunk relationships`;
 
     return prompt;
   }
@@ -174,13 +168,17 @@ WORKFLOW:
 
       // Emit analyzing message
       this.emitMessage(
-        "analyzing",
-        "event-detector",
-        "Starting chunk analysis",
-        {
-          chunkLength: textChunk.length,
-          globalStartPosition,
-        }
+        createStatusMessage(
+          'assistant',
+          'event-detector',
+          'analyzing',
+          "Starting chunk analysis",
+          {
+            chunkLength: textChunk.length,
+            globalStartPosition,
+          },
+          this.novelName
+        )
       );
 
       // Create tools with context including emit function
@@ -205,41 +203,67 @@ WORKFLOW:
           finishReason,
           usage,
         }) => {
-          // Emit step completion info
-          this.emitMessage("step", "event-detector", "Agent step completed", {
-            finishReason,
-            toolCallCount: toolCalls?.length || 0,
-            toolResultCount: toolResults?.length || 0,
-            usage,
-          });
+          // Emit AI reasoning/thinking if present (emit first for better flow)
+          if (text && text.trim()) {
+            this.emitMessage(
+              createReasoningMessage(
+                'assistant',
+                'event-detector',
+                text.substring(0, 500) + (text.length > 500 ? "..." : ""),
+                this.novelName
+              )
+            );
+          }
 
-          // Emit each tool call with its arguments
+          // Emit each tool call
           toolCalls?.forEach((tc) => {
-            if (tc) {
+            if (tc && 'args' in tc) {
               this.emitMessage(
-                "tool_call",
-                "event-detector",
-                `Calling ${tc.toolName}`,
-                {
-                  toolName: tc.toolName,
-                  args: 'args' in tc ? tc.args : undefined, // TODO: Fix types in a cleaner way?
-                }
+                createToolCallMessage(
+                  'assistant',
+                  'event-detector',
+                  tc.toolCallId,
+                  tc.toolName,
+                  tc.args as Record<string, unknown>,
+                  this.novelName
+                )
               );
             }
           });
 
-          // Emit AI reasoning/thinking if present
-          if (text && text.trim()) {
-            this.emitMessage(
-              "thinking",
-              "event-detector",
-              "Agent reasoning",
+          // Emit each tool result
+          toolResults?.forEach((tr) => {
+            if (tr && 'args' in tr) {
+              this.emitMessage(
+                createToolResultMessage(
+                  'assistant',
+                  'event-detector',
+                  tr.toolCallId,
+                  tr.toolName,
+                  tr.args as Record<string, unknown>,
+                  tr.output,
+                  this.novelName
+                )
+              );
+            }
+          });
+
+          // Emit step completion info
+          this.emitMessage(
+            createStatusMessage(
+              'assistant',
+              'event-detector',
+              'completed',
+              "Agent step completed",
               {
-                content:
-                  text.substring(0, 500) + (text.length > 500 ? "..." : ""),
-              }
-            );
-          }
+                finishReason,
+                toolCallCount: toolCalls?.length || 0,
+                toolResultCount: toolResults?.length || 0,
+                usage,
+              },
+              this.novelName
+            )
+          );
         },
       });
 
@@ -284,14 +308,18 @@ WORKFLOW:
 
       // Emit final result message
       this.emitMessage(
-        "result",
-        "event-detector",
-        "Chunk analysis complete",
-        {
-          eventCount: createdEventIds.length,
-          relationshipCount: createdRelationships,
-          eventIds: createdEventIds,
-        }
+        createStatusMessage(
+          'assistant',
+          'event-detector',
+          'success',
+          "Chunk analysis complete",
+          {
+            eventCount: createdEventIds.length,
+            relationshipCount: createdRelationships,
+            eventIds: createdEventIds,
+          },
+          this.novelName
+        )
       );
 
       return createdEventIds;
@@ -305,9 +333,18 @@ WORKFLOW:
         "Failed to analyze text chunk"
       );
 
-      this.emitMessage("error", "event-detector", "Failed to analyze chunk", {
-        error: String(error),
-      });
+      this.emitMessage(
+        createStatusMessage(
+          'assistant',
+          'event-detector',
+          'error',
+          "Failed to analyze chunk",
+          {
+            error: String(error),
+          },
+          this.novelName
+        )
+      );
 
       throw new Error(`Failed to analyze text chunk: ${error}`);
     }
