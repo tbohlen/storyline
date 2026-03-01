@@ -180,7 +180,7 @@ npm run lint                  # Run ESLint
 ## Type System & AI SDK Integration
 
 The codebase uses:
-- **AI SDK** (`ai` package): `streamText`, `ToolLoopAgent`, tool definitions
+- **AI SDK** (`ai` package): `streamText`, `ToolLoopAgent`, tool definitions. By default we should use the AI SDK for all LLM-related backend and frontend work. You can review the full source code in `node_modules/ai/src/` and the full documentation in `node_modules/ai/docs/`
 - **Anthropic AI SDK** (`@ai-sdk/anthropic`): Claude model access
 - **Zod**: Schema validation for tool inputs/outputs (see `src/lib/tools/event-tools.ts`)
 - **UIMessage format**: Standard message format from AI SDK for SSE communication
