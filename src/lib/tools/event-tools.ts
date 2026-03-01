@@ -14,8 +14,11 @@ import {
   getAllEvents,
 } from '../db/events';
 import { loggers } from '../utils/logger';
-import truncate from '../utils/truncate';
-import { createStatusMessage } from '../utils/message-helpers';
+import {
+  createStatusMessage,
+  createToolCallMessage,
+  createToolResultMessage,
+} from '../utils/message-helpers';
 
 const logger = loggers.database;
 
@@ -244,19 +247,14 @@ Do NOT create events for:
       ? createEventInputSchemaWithSpreadsheetId
       : createEventInputSchema,
 
-    execute: async (params: CreateEventInput) => {
-      // Emit tool call message
+    execute: async (params: CreateEventInput, { toolCallId }: { toolCallId: string }) => {
       context.emitMessage(
-        createStatusMessage(
+        createToolCallMessage(
           'assistant',
           'database',
-          'processing',
-          "Creating event",
-          {
-            tool: "create_event",
-            quote: truncate(params.quote, 50),
-            charRange: `${params.charRangeStart}-${params.charRangeEnd}`,
-          },
+          toolCallId,
+          'create_event',
+          params as Record<string, unknown>,
           context.novelName
         )
       );
@@ -298,29 +296,25 @@ Do NOT create events for:
           absoluteDate: params.absoluteDate,
         });
 
-        // Emit success message
-        context.emitMessage(
-          createStatusMessage(
-            'assistant',
-            'database',
-            'success',
-            "Event created",
-            {
-              tool: "create_event",
-              eventId,
-              quote:
-                params.quote.substring(0, 50) +
-                (params.quote.length > 50 ? "..." : ""),
-            },
-            context.novelName
-          )
-        );
-
-        return {
+        const result = {
           success: true,
           eventId,
           message: `Event created successfully with ID: ${eventId}`,
         };
+
+        context.emitMessage(
+          createToolResultMessage(
+            'assistant',
+            'database',
+            toolCallId,
+            'create_event',
+            params as Record<string, unknown>,
+            result,
+            context.novelName
+          )
+        );
+
+        return result;
       } catch (error) {
         logger.error({ error, params }, "Failed to create event");
         context.emitMessage(
@@ -365,19 +359,14 @@ Guidelines:
 
     inputSchema: createRelationshipInputSchema,
 
-    execute: async (params: CreateRelationshipInput) => {
+    execute: async (params: CreateRelationshipInput, { toolCallId }: { toolCallId: string }) => {
       context.emitMessage(
-        createStatusMessage(
+        createToolCallMessage(
           'assistant',
           'database',
-          'processing',
-          'Creating relationship',
-          {
-            tool: 'create_relationship',
-            type: params.relationshipType,
-            fromId: params.fromEventId.substring(0, 8),
-            toId: params.toEventId.substring(0, 8),
-          },
+          toolCallId,
+          'create_relationship',
+          params as Record<string, unknown>,
           context.novelName
         )
       );
@@ -390,26 +379,24 @@ Guidelines:
           params.sourceText
         );
 
+        const result = {
+          success: true,
+          message: `Created ${params.relationshipType} relationship from ${params.fromEventId} to ${params.toEventId}`,
+        };
+
         context.emitMessage(
-          createStatusMessage(
+          createToolResultMessage(
             'assistant',
             'database',
-            'success',
-            'Relationship created',
-            {
-              tool: 'create_relationship',
-              from: params.fromEventId.substring(0, 8),
-              to: params.toEventId.substring(0, 8),
-              type: params.relationshipType,
-            },
+            toolCallId,
+            'create_relationship',
+            params as Record<string, unknown>,
+            result,
             context.novelName
           )
         );
 
-        return {
-          success: true,
-          message: `Created ${params.relationshipType} relationship from ${params.fromEventId} to ${params.toEventId}`,
-        };
+        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to create relationship');
         context.emitMessage(
@@ -446,18 +433,14 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
 
     inputSchema: findEventInputSchema,
 
-    execute: async (params: FindEventInput) => {
+    execute: async (params: FindEventInput, { toolCallId }: { toolCallId: string }) => {
       context.emitMessage(
-        createStatusMessage(
+        createToolCallMessage(
           'assistant',
           'database',
-          'processing',
-          'Finding event',
-          {
-            tool: 'find_event',
-            hasQuote: !!params.quote,
-            hasCharRange: !!(params.charRangeStart || params.charRangeEnd),
-          },
+          toolCallId,
+          'find_event',
+          params as Record<string, unknown>,
           context.novelName
         )
       );
@@ -471,53 +454,37 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
           charRangeEnd: params.charRangeEnd,
         });
 
-        if (event) {
-          context.emitMessage(
-            createStatusMessage(
-              'assistant',
-              'database',
-              'success',
-              'Event found',
-              {
-                tool: 'find_event',
-                eventId: event.id,
-                description: event.description.substring(0, 50) + (event.description.length > 50 ? '...' : ''),
+        const result = event
+          ? {
+              found: true as const,
+              event: {
+                id: event.id,
+                quote: event.quote,
+                description: event.description,
+                charRangeStart: event.charRangeStart,
+                charRangeEnd: event.charRangeEnd,
+                approximateDate: event.approximateDate,
+                absoluteDate: event.absoluteDate,
               },
-              context.novelName
-            )
-          );
-
-          return {
-            found: true,
-            event: {
-              id: event.id,
-              quote: event.quote,
-              description: event.description,
-              charRangeStart: event.charRangeStart,
-              charRangeEnd: event.charRangeEnd,
-              approximateDate: event.approximateDate,
-              absoluteDate: event.absoluteDate,
-            },
-          };
-        }
+            }
+          : {
+              found: false as const,
+              message: 'No matching event found',
+            };
 
         context.emitMessage(
-          createStatusMessage(
+          createToolResultMessage(
             'assistant',
             'database',
-            'success',
-            'Event not found',
-            {
-              tool: 'find_event',
-            },
+            toolCallId,
+            'find_event',
+            params as Record<string, unknown>,
+            result,
             context.novelName
           )
         );
 
-        return {
-          found: false,
-          message: 'No matching event found',
-        };
+        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to find event');
         context.emitMessage(
@@ -549,20 +516,16 @@ function updateEventTool(context: EventToolContext) {
 
     inputSchema: updateEventInputSchema,
 
-    execute: async (params: UpdateEventInput) => {
+    execute: async (params: UpdateEventInput, { toolCallId }: { toolCallId: string }) => {
       const { eventId, ...updates } = params;
 
       context.emitMessage(
-        createStatusMessage(
+        createToolCallMessage(
           'assistant',
           'database',
-          'processing',
-          'Updating event',
-          {
-            tool: 'update_event',
-            eventId: eventId.substring(0, 8),
-            updates: Object.keys(updates),
-          },
+          toolCallId,
+          'update_event',
+          params as Record<string, unknown>,
           context.novelName
         )
       );
@@ -570,24 +533,24 @@ function updateEventTool(context: EventToolContext) {
       try {
         await updateEventNode(eventId, updates);
 
+        const result = {
+          success: true,
+          message: `Event ${eventId} updated successfully`,
+        };
+
         context.emitMessage(
-          createStatusMessage(
+          createToolResultMessage(
             'assistant',
             'database',
-            'success',
-            'Event updated',
-            {
-              tool: 'update_event',
-              eventId: eventId.substring(0, 8),
-            },
+            toolCallId,
+            'update_event',
+            params as Record<string, unknown>,
+            result,
             context.novelName
           )
         );
 
-        return {
-          success: true,
-          message: `Event ${eventId} updated successfully`,
-        };
+        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to update event');
         context.emitMessage(
@@ -621,19 +584,16 @@ For example, if the current text says "the next day after the party" and you cre
 
     inputSchema: getRecentEventsInputSchema,
 
-    execute: async (params: GetRecentEventsInput) => {
+    execute: async (params: GetRecentEventsInput, { toolCallId }: { toolCallId: string }) => {
       const limit = Math.min(params.limit || 10, 50); // Cap at 50 to avoid overwhelming the context
 
       context.emitMessage(
-        createStatusMessage(
+        createToolCallMessage(
           'assistant',
           'database',
-          'processing',
-          'Fetching recent events',
-          {
-            tool: 'get_recent_events',
-            limit,
-          },
+          toolCallId,
+          'get_recent_events',
+          params as Record<string, unknown>,
           context.novelName
         )
       );
@@ -646,21 +606,7 @@ For example, if the current text says "the next day after the party" and you cre
           .filter(e => e.charRangeEnd < context.globalStartPosition)
           .slice(-limit); // Get last N events
 
-        context.emitMessage(
-          createStatusMessage(
-            'assistant',
-            'database',
-            'success',
-            `Found ${recentEvents.length} recent events`,
-            {
-              tool: 'get_recent_events',
-              count: recentEvents.length,
-            },
-            context.novelName
-          )
-        );
-
-        return {
+        const result = {
           success: true,
           events: recentEvents.map(e => ({
             id: e.id,
@@ -673,6 +619,20 @@ For example, if the current text says "the next day after the party" and you cre
           })),
           count: recentEvents.length,
         };
+
+        context.emitMessage(
+          createToolResultMessage(
+            'assistant',
+            'database',
+            toolCallId,
+            'get_recent_events',
+            params as Record<string, unknown>,
+            result,
+            context.novelName
+          )
+        );
+
+        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to get recent events');
         context.emitMessage(
@@ -706,39 +666,36 @@ This is useful during timeline resolution when you want to categorize events by 
 
     inputSchema: findMasterEventInputSchema,
 
-    execute: async (params: FindMasterEventInput) => {
+    execute: async (params: FindMasterEventInput, { toolCallId }: { toolCallId: string }) => {
       context.emitMessage(
-        createStatusMessage(
+        createToolCallMessage(
           'assistant',
           'database',
-          'processing',
-          'Searching for master event',
-          {
-            tool: 'find_master_event',
-            description: params.description.substring(0, 50),
-          },
+          toolCallId,
+          'find_master_event',
+          params as Record<string, unknown>,
           context.novelName
         )
       );
 
       try {
         if (!context.masterEventsEnabled || !context.masterEvents || context.masterEvents.length === 0) {
+          const result = {
+            found: false as const,
+            message: 'Master events spreadsheet is not enabled or empty',
+          };
           context.emitMessage(
-            createStatusMessage(
+            createToolResultMessage(
               'assistant',
               'database',
-              'success',
-              'Master events not available',
-              {
-                tool: 'find_master_event',
-              },
+              toolCallId,
+              'find_master_event',
+              params as Record<string, unknown>,
+              result,
               context.novelName
             )
           );
-          return {
-            found: false,
-            message: 'Master events spreadsheet is not enabled or empty',
-          };
+          return result;
         }
 
         // Simple fuzzy matching: find master events that contain keywords from the description
@@ -759,54 +716,40 @@ This is useful during timeline resolution when you want to categorize events by 
           .filter(m => m.matchScore > 0.3) // At least 30% of keywords match
           .sort((a, b) => b.matchScore - a.matchScore);
 
-        if (matches.length === 0) {
-          context.emitMessage(
-            createStatusMessage(
-              'assistant',
-              'database',
-              'success',
-              'No matching master event found',
-              {
-                tool: 'find_master_event',
-              },
-              context.novelName
-            )
-          );
-          return {
-            found: false,
-            message: 'No matching master event found',
-          };
-        }
-
-        const bestMatch = matches[0];
+        const result = matches.length === 0
+          ? {
+              found: false as const,
+              message: 'No matching master event found',
+            }
+          : (() => {
+              const bestMatch = matches[0];
+              return {
+                found: true as const,
+                spreadsheetId: bestMatch.masterEvent.id,
+                description: bestMatch.masterEvent.description,
+                category: bestMatch.masterEvent.category,
+                matchConfidence: bestMatch.matchScore,
+                alternativeMatches: matches.slice(1, 3).map(m => ({
+                  spreadsheetId: m.masterEvent.id,
+                  description: m.masterEvent.description,
+                  matchConfidence: m.matchScore,
+                })),
+              };
+            })();
 
         context.emitMessage(
-          createStatusMessage(
+          createToolResultMessage(
             'assistant',
             'database',
-            'success',
-            'Found master event match',
-            {
-              tool: 'find_master_event',
-              spreadsheetId: bestMatch.masterEvent.id,
-              confidence: bestMatch.matchScore,
-            },
+            toolCallId,
+            'find_master_event',
+            params as Record<string, unknown>,
+            result,
             context.novelName
           )
         );
 
-        return {
-          found: true,
-          spreadsheetId: bestMatch.masterEvent.id,
-          description: bestMatch.masterEvent.description,
-          category: bestMatch.masterEvent.category,
-          matchConfidence: bestMatch.matchScore,
-          alternativeMatches: matches.slice(1, 3).map(m => ({
-            spreadsheetId: m.masterEvent.id,
-            description: m.masterEvent.description,
-            matchConfidence: m.matchScore,
-          })),
-        };
+        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to find master event');
         context.emitMessage(
@@ -861,5 +804,5 @@ export function createEventTools(context: EventToolContext) {
     ...(context.masterEventsEnabled && {
       find_master_event: findMasterEventTool(context)
     })
-  }; 
+  };
 }

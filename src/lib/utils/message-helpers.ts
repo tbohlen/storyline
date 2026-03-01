@@ -1,4 +1,4 @@
-import type { UIMessage, UIMessagePart, ToolUIPart, DataUIPart } from 'ai';
+import type { UIMessage, UIMessagePart } from "ai";
 import type {
   CreateEventInput,
   CreateEventOutput,
@@ -12,19 +12,30 @@ import type {
   GetRecentEventsOutput,
   FindMasterEventInput,
   FindMasterEventOutput,
-} from '../tools/event-tools';
+} from "../tools/event-tools";
 
 /**
  * Agent role types for our multi-agent orchestrator
  */
-export type AgentRole = 'orchestrator' | 'event-detector' | 'timeline-resolver' | 'database' | 'system';
+export type AgentRole =
+  | "orchestrator"
+  | "event-detector"
+  | "timeline-resolver"
+  | "database"
+  | "system";
 
 /**
  * Custom message part for event status updates (not in AI SDK)
  */
 export type EventStatusPart = {
-  type: 'event-status';
-  status: 'analyzing' | 'processing' | 'success' | 'error' | 'completed' | 'event_found';
+  type: "event-status";
+  status:
+    | "analyzing"
+    | "processing"
+    | "success"
+    | "error"
+    | "completed"
+    | "event_found";
   data?: Record<string, unknown>;
 };
 
@@ -76,7 +87,6 @@ type StorylineData = {
 
 export type StorylineMessagePart = UIMessagePart<StorylineData, StorylineTools>;
 
-
 /**
  * Create a simple text message
  *
@@ -86,18 +96,18 @@ export type StorylineMessagePart = UIMessagePart<StorylineData, StorylineTools>;
  * @returns AI SDK Message with text part
  */
 export function createTextMessage(
-  role: UIMessage['role'],
+  role: UIMessage["role"],
   agent: AgentRole,
-  content: string
+  content: string,
 ): UIMessage {
   return {
     id: crypto.randomUUID(),
     role,
-    parts: [{ type: 'text', text: content }],
+    parts: [{ type: "text", text: content }],
     metadata: {
       roleName: agent,
       createdAt: new Date(),
-    }
+    },
   };
 }
 
@@ -112,10 +122,10 @@ export function createTextMessage(
  * @returns AI SDK Message with reasoning part
  */
 export function createReasoningMessage(
-  role: UIMessage['role'],
+  role: UIMessage["role"],
   agent: AgentRole,
   reasoningText: string,
-  filename?: string
+  filename?: string,
 ): UIMessage {
   return {
     id: crypto.randomUUID(),
@@ -142,12 +152,12 @@ export function createReasoningMessage(
  * @returns AI SDK Message with tool-invocation part (state: 'call')
  */
 export function createToolCallMessage(
-  role: UIMessage['role'],
+  role: UIMessage["role"],
   agent: AgentRole,
   toolCallId: string,
   toolName: string,
   args: Record<string, unknown>,
-  filename?: string
+  filename?: string,
 ): UIMessage {
   return {
     id: crypto.randomUUID(),
@@ -181,13 +191,13 @@ export function createToolCallMessage(
  * @returns AI SDK Message with tool-invocation part (state: 'result')
  */
 export function createToolResultMessage(
-  role: UIMessage['role'],
+  role: UIMessage["role"],
   agent: AgentRole,
   toolCallId: string,
   toolName: string,
   args: Record<string, unknown>,
   result: unknown,
-  filename?: string
+  filename?: string,
 ): UIMessage {
   return {
     id: crypto.randomUUID(),
@@ -198,7 +208,7 @@ export function createToolResultMessage(
         toolCallId,
         state: "output-available",
         input: args,
-        output: result
+        output: result,
       },
     ],
     metadata: { filename, roleName: agent, createdAt: new Date() },
@@ -217,12 +227,12 @@ export function createToolResultMessage(
  * @returns AI SDK Message with event-status part
  */
 export function createStatusMessage(
-  role: UIMessage['role'],
+  role: UIMessage["role"],
   agent: AgentRole,
-  status: EventStatusPart['status'],
+  status: EventStatusPart["status"],
   content: string,
   data?: Record<string, unknown>,
-  filename?: string
+  filename?: string,
 ): UIMessage {
   return {
     id: crypto.randomUUID(),

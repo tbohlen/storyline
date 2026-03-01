@@ -6,8 +6,6 @@ import { loggers } from "../utils/logger";
 import type { UIMessage } from "ai";
 import {
   createStatusMessage,
-  createToolCallMessage,
-  createToolResultMessage,
   createReasoningMessage,
 } from "../utils/message-helpers";
 
@@ -214,39 +212,6 @@ TOOLS AVAILABLE:
               )
             );
           }
-
-          // Emit each tool call
-          toolCalls?.forEach((tc) => {
-            if (tc && 'args' in tc) {
-              this.emitMessage(
-                createToolCallMessage(
-                  'assistant',
-                  'event-detector',
-                  tc.toolCallId,
-                  tc.toolName,
-                  tc.args as Record<string, unknown>,
-                  this.novelName
-                )
-              );
-            }
-          });
-
-          // Emit each tool result
-          toolResults?.forEach((tr) => {
-            if (tr && 'args' in tr) {
-              this.emitMessage(
-                createToolResultMessage(
-                  'assistant',
-                  'event-detector',
-                  tr.toolCallId,
-                  tr.toolName,
-                  tr.args as Record<string, unknown>,
-                  tr.output,
-                  this.novelName
-                )
-              );
-            }
-          });
 
           // Emit step completion info
           this.emitMessage(

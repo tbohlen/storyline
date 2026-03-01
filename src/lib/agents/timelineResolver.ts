@@ -6,8 +6,6 @@ import { EventNode, getBatchRelationships } from "../db/events";
 import { loggers } from "../utils/logger";
 import {
   createStatusMessage,
-  createToolCallMessage,
-  createToolResultMessage,
   createReasoningMessage,
 } from "../utils/message-helpers";
 
@@ -251,39 +249,6 @@ Analyze this context and establish temporal relationships between the events. Re
               )
             );
           }
-
-          // Emit each tool call
-          toolCalls?.forEach((tc) => {
-            if (tc && 'args' in tc) {
-              this.emitMessage(
-                createToolCallMessage(
-                  'assistant',
-                  'timeline-resolver',
-                  tc.toolCallId,
-                  tc.toolName,
-                  tc.args as Record<string, unknown>,
-                  this.novelName
-                )
-              );
-            }
-          });
-
-          // Emit each tool result
-          toolResults?.forEach((tr) => {
-            if (tr && 'args' in tr) {
-              this.emitMessage(
-                createToolResultMessage(
-                  'assistant',
-                  'timeline-resolver',
-                  tr.toolCallId,
-                  tr.toolName,
-                  tr.args as Record<string, unknown>,
-                  tr.output,
-                  this.novelName
-                )
-              );
-            }
-          });
 
           // Emit step completion info
           this.emitMessage(
