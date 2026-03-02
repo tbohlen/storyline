@@ -1,13 +1,13 @@
 /**
  * Message Store Service
  *
- * Persists UIMessages to per-file NDJSON logs in the /data directory.
- * Each line in the file is a complete JSON-serialized UIMessage.
+ * Persists UIMessageChunks to per-file NDJSON logs in the /data directory.
+ * Each line in the file is a complete JSON-serialized UIMessageChunk.
  *
  * This service is intentionally ignorant of SSE, agents, or orchestration.
  * It is a pure I/O layer that any part of the application can call directly.
  *
- * Future extensibility: the chat route will call appendMessage/readMessages
+ * Future extensibility: the chat route will call appendChunk/readChunks
  * directly to persist user and AI chat messages to the same file, forming a
  * complete chronological record of the session alongside the analysis messages.
  */
@@ -15,7 +15,7 @@
 import { existsSync } from 'fs';
 import { appendFile, readFile } from 'fs/promises';
 import { join } from 'path';
-import type { UIMessage } from 'ai';
+import type { UIMessageChunk } from 'ai';
 import { loggers } from '../utils/logger';
 
 const logger = loggers.messageStore;
@@ -41,38 +41,38 @@ export function messageStoreExists(filename: string): boolean {
 }
 
 /**
- * Appends a single UIMessage as a JSON line to the NDJSON file.
+ * Appends a single UIMessageChunk as a JSON line to the NDJSON file.
  *
  * This function is fire-and-forget safe: errors are logged and swallowed
  * so that a persistence failure never breaks the SSE emit path.
  * Callers on the critical path should not await this function.
  *
  * @param filename - The novel filename key
- * @param message - The UIMessage to persist
+ * @param chunk - The UIMessageChunk to persist
  */
-export async function appendMessage(
+export async function appendChunk(
   filename: string,
-  message: UIMessage
+  chunk: UIMessageChunk
 ): Promise<void> {
   try {
     const path = getMessageStorePath(filename);
-    await appendFile(path, JSON.stringify(message) + '\n');
+    await appendFile(path, JSON.stringify(chunk) + '\n');
   } catch (error) {
-    logger.error({ filename, error }, 'Failed to persist message to store');
+    logger.error({ filename, error }, 'Failed to persist chunk to store');
   }
 }
 
 /**
- * Reads all persisted UIMessages for a given filename.
+ * Reads all persisted UIMessageChunks for a given filename.
  *
  * Returns an empty array if the file does not exist or cannot be read.
  * Each line is parsed independently; malformed lines are skipped with a
  * warning log so a single corrupt entry does not lose the full history.
  *
  * @param filename - The novel filename key
- * @returns Ordered list of UIMessages from the file
+ * @returns Ordered list of UIMessageChunks from the file
  */
-export async function readMessages(filename: string): Promise<UIMessage[]> {
+export async function readChunks(filename: string): Promise<UIMessageChunk[]> {
   const path = getMessageStorePath(filename);
 
   if (!existsSync(path)) {
@@ -81,20 +81,20 @@ export async function readMessages(filename: string): Promise<UIMessage[]> {
 
   try {
     const raw = await readFile(path, 'utf-8');
-    const messages: UIMessage[] = [];
+    const chunks: UIMessageChunk[] = [];
 
     for (const line of raw.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
       try {
-        messages.push(JSON.parse(trimmed) as UIMessage);
+        chunks.push(JSON.parse(trimmed) as UIMessageChunk);
       } catch (parseError) {
-        logger.warn({ filename, line: trimmed.substring(0, 100), parseError }, 'Skipping malformed message line');
+        logger.warn({ filename, line: trimmed.substring(0, 100), parseError }, 'Skipping malformed chunk line');
       }
     }
 
-    return messages;
+    return chunks;
   } catch (error) {
     logger.error({ filename, error }, 'Failed to read message store');
     return [];
