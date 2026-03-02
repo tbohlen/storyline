@@ -112,8 +112,11 @@ export async function createRelationship(
   relationshipType: 'BEFORE' | 'AFTER' | 'CONCURRENT' | 'IDENTICAL',
   sourceText: string
 ): Promise<void> {
+  const relationshipId = uuidv4();
+
   try {
     logger.info({
+      relationshipId,
       fromEventId,
       toEventId,
       relationshipType,
@@ -130,6 +133,7 @@ export async function createRelationship(
       MATCH (from:Event {id: $fromEventId})
       MATCH (to:Event {id: $toEventId})
       CREATE (from)-[r:${relationshipType} {
+        id: $id,
         sourceText: $sourceText,
         createdAt: datetime()
       }]->(to)
@@ -137,6 +141,7 @@ export async function createRelationship(
     `;
 
     const result = await executeQuery(cypher, {
+      id: relationshipId,
       fromEventId,
       toEventId,
       sourceText,
@@ -147,6 +152,7 @@ export async function createRelationship(
     }
 
     logger.info({
+      relationshipId,
       fromEventId,
       toEventId,
       relationshipType

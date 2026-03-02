@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       MATCH (from:Event)-[r]->(to:Event)
       WHERE from.novelName = $novelName
       RETURN
+        r.id as id,
         from.id as fromId,
         to.id as toId,
         type(r) as relationshipType,
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
     `, { novelName: filename });
 
     const relationships = relationshipsResult.records.map(record => ({
+      id: record.get('id'),
       from: record.get('fromId'),
       to: record.get('toId'),
       type: record.get('relationshipType'),

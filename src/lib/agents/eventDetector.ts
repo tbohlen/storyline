@@ -194,20 +194,28 @@ TOOLS AVAILABLE:
         instructions: this.systemPrompt,
         tools,
         maxOutputTokens: 20000, // Allow multiple events and relationships per chunk
+        providerOptions: {
+          anthropic: {
+            thinking: {
+              type: 'enabled',
+              budgetTokens: 8000,
+            },
+          },
+        },
         onStepFinish: ({
-          text,
+          reasoningText,
           toolCalls,
           toolResults,
           finishReason,
           usage,
         }) => {
-          // Emit AI reasoning/thinking if present (emit first for better flow)
-          if (text && text.trim()) {
+          // Emit extended thinking content if present
+          if (reasoningText && reasoningText.trim()) {
             this.emitMessage(
               createReasoningMessage(
                 'assistant',
                 'event-detector',
-                text.substring(0, 500) + (text.length > 500 ? "..." : ""),
+                reasoningText.substring(0, 500) + (reasoningText.length > 500 ? "..." : ""),
                 this.novelName
               )
             );

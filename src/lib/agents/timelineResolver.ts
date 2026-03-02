@@ -232,20 +232,28 @@ Analyze this context and establish temporal relationships between the events. Re
           }),
         },
         maxOutputTokens: 20000,
+        providerOptions: {
+          anthropic: {
+            thinking: {
+              type: 'enabled',
+              budgetTokens: 8000,
+            },
+          },
+        },
         onStepFinish: ({
-          text,
+          reasoningText,
           toolCalls,
           toolResults,
           finishReason,
           usage,
         }) => {
-          // Emit AI reasoning if present (emit first for better flow)
-          if (text && text.trim()) {
+          // Emit extended thinking content if present
+          if (reasoningText && reasoningText.trim()) {
             this.emitMessage(
               createReasoningMessage(
                 'assistant',
                 'timeline-resolver',
-                text.substring(0, 500) + (text.length > 500 ? "..." : ""),
+                reasoningText.substring(0, 500) + (reasoningText.length > 500 ? "..." : ""),
                 this.novelName
               )
             );

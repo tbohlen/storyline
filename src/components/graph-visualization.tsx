@@ -8,6 +8,7 @@ import { Loader2, AlertTriangle, Network } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGraphStore } from '@/lib/store/graph-store';
 import { NodeDetailsOverlay } from './node-details-overlay';
+import { EdgeDetailsOverlay } from './edge-details-overlay';
 
 // Dynamically import GraphCanvas with no SSR
 const GraphCanvas = dynamic(
@@ -25,8 +26,20 @@ interface GraphVisualizationProps {
  * Fetches graph data, listens to SSE for updates, and composes child components
  */
 export function GraphVisualization({ filename, className }: GraphVisualizationProps) {
-  const { graphData, selectedNode, loading, error } = useGraphStore();
-  const { setGraphData, setSelectedNode, setLoading, setError, clearSelectedNode } = useGraphStore();
+  const {
+    graphData,
+    selectedNode,
+    selectedEdge,
+    loading,
+    error,
+    setGraphData,
+    setSelectedNode,
+    setSelectedEdge,
+    setLoading,
+    setError,
+    clearSelectedNode,
+    clearSelectedEdge,
+  } = useGraphStore();
 
   /**
    * Fetch graph data from API
@@ -162,11 +175,17 @@ export function GraphVisualization({ filename, className }: GraphVisualizationPr
                   nodes={graphData.nodes}
                   edges={graphData.edges}
                   onNodeClick={(node) => setSelectedNode(node)}
+                  onEdgeClick={(edge) => setSelectedEdge(edge)}
                 />
 
                 <NodeDetailsOverlay
                   node={selectedNode}
                   onClose={() => clearSelectedNode()}
+                />
+
+                <EdgeDetailsOverlay
+                  edge={selectedEdge}
+                  onClose={() => clearSelectedEdge()}
                 />
               </>
             )}

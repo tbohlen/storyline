@@ -42,8 +42,18 @@ class OrchestratorEventEmitter {
   }
 }
 
-// Global instance that orchestrator will use
-export const orchestratorEvents = new OrchestratorEventEmitter();
+// Next.js bundles each API route separately, which can produce multiple module
+// instances. Storing the emitter on `global` ensures all bundles share one instance.
+declare global {
+  // eslint-disable-next-line no-var
+  var __orchestratorEvents: OrchestratorEventEmitter | undefined;
+}
+
+if (!global.__orchestratorEvents) {
+  global.__orchestratorEvents = new OrchestratorEventEmitter();
+}
+
+export const orchestratorEvents = global.__orchestratorEvents;
 
 /**
  * Add an SSE connection controller for a specific file
