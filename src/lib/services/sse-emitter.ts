@@ -7,6 +7,7 @@
 
 import type { UIMessage } from 'ai';
 import { loggers } from '@/lib/utils/logger';
+import { appendMessage } from './message-store';
 
 const logger = loggers.api;
 
@@ -126,6 +127,8 @@ export function emitUIMessage(filename: string, message: UIMessage): void {
     role: message.role,
   }, "Emitting orchestrator message");
   orchestratorEvents.emit(filename, message);
+  // Persist fire-and-forget; errors are swallowed inside appendMessage
+  appendMessage(filename, message);
 }
 
 /**

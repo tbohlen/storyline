@@ -6,6 +6,7 @@ import {
   addConnection,
   removeConnection,
 } from '@/lib/services/sse-emitter';
+import { readMessages } from '@/lib/services/message-store';
 
 const logger = loggers.api;
 
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   // Create SSE stream
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       logger.info({ filename }, 'SSE stream started');
 
       // Add this controller to the connections map
@@ -52,6 +53,20 @@ export async function GET(request: NextRequest) {
         );
       } catch (error) {
         logger.error({ filename, error }, 'Failed to send initial SSE message');
+      }
+
+      // Replay historical messages so the observer appears stateful on reconnect.
+      // This must complete before registering the live listener to ensure messages
+      // arrive in order — replayed history first, then live events from this point on.
+      const pastMessages = await readMessages(filename);
+      logger.info({ filename, count: pastMessages.length }, 'Replaying historical messages');
+      for (const msg of pastMessages) {
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`));
+        } catch (error) {
+          logger.error({ filename, error }, 'Failed to replay historical SSE message');
+          return; // Stream already closed — bail before registering live listener
+        }
       }
 
       // Listen for orchestrator events for this filename

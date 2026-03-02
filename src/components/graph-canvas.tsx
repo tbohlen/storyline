@@ -88,11 +88,8 @@ export function GraphCanvas({
           onPan: true, // Enable pan with click-and-drag
           onRelationshipClick: (edge: NVLEdge) => {
             // Find the original edge using the clicked edge's id
-            console.log(`RELATION CLICK: ${JSON.stringify(edge)}`);
-            console.log(`Edges are ${JSON.stringify(edges)}`);
             const eventEdge = edges.find((e) => e.id === edge.id);
             if (eventEdge) {
-              console.log("IN IF");
               onEdgeClick(eventEdge);
             }
           }

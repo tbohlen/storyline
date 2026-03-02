@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { Orchestrator } from '@/lib/services/orchestrator';
+import { messageStoreExists } from '@/lib/services/message-store';
 import { loggers } from '@/lib/utils/logger';
 
 const logger = loggers.api;
@@ -73,6 +74,14 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
+    }
+
+    // Prevent reprocessing a file that already has a completed analysis
+    if (messageStoreExists(filename)) {
+      return NextResponse.json(
+        { error: 'File has already been processed. Reprocessing is not supported.' },
+        { status: 409 }
+      );
     }
 
     // Create and initialize orchestrator

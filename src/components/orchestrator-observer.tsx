@@ -21,6 +21,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StorylineMessagePart } from '@/lib/utils/message-helpers';
+import truncate from '@/lib/utils/truncate';
 
 interface OrchestratorObserverProps {
   filename: string;
@@ -89,41 +90,36 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
 
   return (
     <Card className={cn("h-full flex flex-col", className)}>
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Analysis Progress</CardTitle>
+      <CardHeader>
+        <div className="flex items-center justify-between max-w-full gap-8 overflow-hidden">
+          <CardTitle className="text-sm text-ellipsis whitespace-nowrap shrink overflow-hidden">{filename}</CardTitle>
           <ConnectionStatusBadge status={connectionStatus} />
-        </div>
-        <div className="text-sm text-muted-foreground">
-          Processing: <span className="font-mono">{filename}</span>
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-auto">
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950 dark:border-red-800">
-            <div className="flex items-center">
-              <AlertTriangle className="h-4 w-4 text-red-500 mr-2" />
-              <span className="text-sm text-red-700 dark:text-red-100">{error}</span>
-            </div>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950 dark:border-red-800">
+          <div className="flex items-center">
+            <AlertTriangle className="h-4 w-4 text-red-500 mr-2" />
+            <span className="text-sm text-red-700 dark:text-red-100">{error}</span>
           </div>
-        )}
+        </div>
+      )}
 
-        <Conversation>
-          <ConversationContent>
-            {messages.length === 0 && connectionStatus === "connected" && (
-              <div className="text-center text-muted-foreground py-8">
-                <Loader2 className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
-                <p>Waiting for analysis to begin...</p>
-              </div>
-            )}
-            {messages.map((message) => (
-              <MessageRenderer key={message.id} message={message} />
-            ))}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-      </CardContent>
+      <Conversation>
+        <ConversationContent>
+          {messages.length === 0 && connectionStatus === "connected" && (
+            <div className="text-center text-muted-foreground py-8">
+              <Loader2 className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
+              <p>Waiting for analysis to begin...</p>
+            </div>
+          )}
+          {messages.map((message) => (
+            <MessageRenderer key={message.id} message={message} />
+          ))}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
     </Card>
   );
 }

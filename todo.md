@@ -1,9 +1,15 @@
+P0
 - [] Clean up the Analysis progress output to make it more readible (in progress)
-- [] Allow the user to upload the master events list
+- [] Test and improve accuracy
+- [] Order the nodes in some way that makes sense - date or page number (issue with worker script not loading for nvl)
+
+P1
 - [] After analysis is complete, offer the user a chat interface to modify the graph
-- [] Make shorter descriptions for nodes for readibility
-- [] Order the nodes in some way that makes sense - date or page number
+
+
+P2
+- [] Allow the user to upload the master events list
 - [] Differentiate between when something is mentioned in the story and when the referenced event occurs
-- [X] Create more cohesive timelines by making sure more events are connected in a single line. This might be doable by moving to chunk requests happening in the agent itself.
+
+Future
 - [] Allow the user to rearrange the nodes
-- [] fix issue with worker script not loading for nvl 

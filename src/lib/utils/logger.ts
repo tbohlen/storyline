@@ -50,4 +50,5 @@ export const loggers = {
   novelReader: createLogger('novel-reader'),
   fileParser: createLogger('file-parser'),
   api: createLogger('api'),
+  messageStore: createLogger('message-store'),
 } as const;
