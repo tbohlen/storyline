@@ -71,7 +71,12 @@ export function GraphCanvas({
         nodes={nvlNodes}
         rels={nvlRelationships}
         nvlOptions={{
-          layout: "d3Force",
+          layout: "hierarchical",
+          layoutOptions: {
+            direction: "right", // left-to-right = earlier events → later events
+            packing: "bin", // compact packing of disconnected subgraphs
+          },
+          disableWebWorkers: true, // Something is wrong with workers scripts so have to do this :(
           allowDynamicMinZoom: true,
           instanceId: "event-graph",
         }}
@@ -91,7 +96,7 @@ export function GraphCanvas({
             if (eventEdge) {
               onEdgeClick(eventEdge);
             }
-          }
+          },
         }}
       />
     </div>
