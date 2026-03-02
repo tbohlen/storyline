@@ -9,7 +9,7 @@ interface UIMessage {
   id: string;
   role: 'system' | 'user' | 'assistant' | 'data';
   createdAt?: Date;
-  content: string;
+  content: string; // DEPRECATED. USE IMPORTED TYPES INSTEAD
 }
 
 /**
@@ -29,7 +29,7 @@ export function HumanMessage({ message }: HumanMessageProps) {
         <Card className="bg-primary text-primary-foreground">
           <CardContent className="">
             <div className="text-sm whitespace-pre-wrap">
-              {message.content}
+              CONTENT PROP DEPRECATED FIX! {message.content}
             </div>
           </CardContent>
         </Card>

@@ -9,7 +9,7 @@ interface UIMessage {
   id: string;
   role: 'system' | 'user' | 'assistant' | 'data';
   createdAt?: Date;
-  content: string;
+  content: string; // CONTENT PROP DEPRECATED! USE IMPORTED TYPE INSTEAD
 }
 
 /**

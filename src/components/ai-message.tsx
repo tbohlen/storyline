@@ -27,7 +27,7 @@ export function AIMessage({ message }: AIMessageProps) {
         <Card className="bg-muted/50">
           <CardContent className="">
             <div className="text-sm text-foreground whitespace-pre-wrap">
-              {message.content}
+              CONTENT PROP DEPRECATED FIX THIS! {message.content} 
             </div>
           </CardContent>
         </Card>
