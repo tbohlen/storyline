@@ -108,8 +108,8 @@ TEMPORAL MARKERS TO LOOK FOR:
 - Time jumps: "years passed", "the following month"
 
 RELATIONSHIP TYPES:
-- BEFORE: First event happens before second event
-- AFTER: First event happens after second event
+- BEFORE: The text in the book suggests the first event happens before the second event
+- AFTER: The text in the book suggests the first event happens after second event
 - CONCURRENT: Events happen at the same time
 - IDENTICAL: Events refer to the same occurrence (duplicate references)
 
@@ -129,6 +129,19 @@ TOOLS AVAILABLE:
 - create_relationship: Link two events with a relationship (BEFORE, AFTER, CONCURRENT, or IDENTICAL for duplicates)
 - update_event: Add dates or master event links to an event
 - find_master_event: Search for matching master event types
+
+BEFORE(A, B) and AFTER(A, B) are inverses: A BEFORE B is equivalent to B AFTER A. Choose the direction that mirrors the grammatical framing of the source text:
+
+  - Use BEFORE when the text positions Event A as the earlier anchor, looking forward to Event B:
+    - "Earlier that day, [A] happened" → A BEFORE current event
+    - "Years before [B], [A] had occurred" → A BEFORE B
+    - "Prior to [B], [A] took place" → A BEFORE B
+  - Use AFTER when the text positions Event A as the later anchor, looking back at Event B:
+    - "Later that evening, [A] happened" → A AFTER current event
+    - "Years after [B], [A] occurred" → A AFTER B
+    - "Following [B], [A] took place" → A AFTER B
+
+  Simple rule: parse the sentence structure. "Before B, A happened" → A BEFORE B. "After B, A happened" → A AFTER B.
 
 Remember: Your job is to document what the text says, not to resolve contradictions. Multiple orderings are data, not errors.`;
 
@@ -259,22 +272,22 @@ Analyze this context and establish temporal relationships between the events. Re
             );
           }
 
-          // Emit step completion info
-          this.emitMessage(
-            createStatusMessage(
-              'assistant',
-              'timeline-resolver',
-              'completed',
-              "Agent step completed",
-              {
-                finishReason,
-                toolCallCount: toolCalls?.length || 0,
-                toolResultCount: toolResults?.length || 0,
-                usage,
-              },
-              this.novelName
-            )
-          );
+          // // Emit step completion info
+          // this.emitMessage(
+          //   createStatusMessage(
+          //     'assistant',
+          //     'timeline-resolver',
+          //     'completed',
+          //     "Agent step completed",
+          //     {
+          //       finishReason,
+          //       toolCallCount: toolCalls?.length || 0,
+          //       toolResultCount: toolResults?.length || 0,
+          //       usage,
+          //     },
+          //     this.novelName
+          //   )
+          // );
         },
       });
 

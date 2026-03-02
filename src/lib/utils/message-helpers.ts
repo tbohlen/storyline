@@ -1,4 +1,4 @@
-import type { UIMessage, UIMessagePart } from "ai";
+import type { UIMessage, UIMessagePart, ToolUIPart } from "ai";
 import type {
   CreateEventInput,
   CreateEventOutput,
@@ -86,6 +86,7 @@ type StorylineData = {
 };
 
 export type StorylineMessagePart = UIMessagePart<StorylineData, StorylineTools>;
+export type StorylineToolPart = ToolUIPart<StorylineTools>;
 
 /**
  * Create a simple text message

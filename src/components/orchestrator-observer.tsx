@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import type { UIMessage } from 'ai';
+import type { UIMessage, TextUIPart, ReasoningUIPart } from 'ai';
 import {
   Conversation,
   ConversationContent,
@@ -20,6 +20,7 @@ import {
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StorylineMessagePart } from '@/lib/utils/message-helpers';
+import ToolRenderer from './tool-renderer';
 
 interface OrchestratorObserverProps {
   filename: string;
@@ -140,26 +141,25 @@ function MessageRenderer({ message }: { message: UIMessage }) {
  * Renderer for individual message parts
  */
 function PartRenderer({ part }: { part: StorylineMessagePart }) {
-  switch (part.type) {
+  switch (part.type.split("-")[0]) {
     case 'text':
-      return <MessageResponse>{part.text}</MessageResponse>;
+      return <MessageResponse>{(part as TextUIPart).text}</MessageResponse>;
 
     case 'reasoning':
       return (
         <Reasoning isStreaming={false}>
           <ReasoningTrigger />
-          <ReasoningContent>{part.text}</ReasoningContent>
+          <ReasoningContent>{(part as ReasoningUIPart).text}</ReasoningContent>
         </Reasoning>
       );
 
-    case 'data-status':
+    case 'data':
       return <EventStatusRenderer part={part as DataPart} />;
 
+    case 'tool':
+        return <ToolRenderer part={part as ToolPart} />;
+
     default:
-      // Handle tool parts dynamically (tool-create_event, tool-find_event, etc.)
-      if (part.type.startsWith('tool-')) {
-        return <ToolInvocationRenderer part={part as ToolPart} />;
-      }
       return null;
   }
 }
@@ -171,70 +171,16 @@ type ToolPart = Extract<StorylineMessagePart, { type: `tool-${string}` }>;
 type DataPart = Extract<StorylineMessagePart, { type: `data-${string}` }>;
 
 /**
- * Custom component for rendering tool invocations
- */
-function ToolInvocationRenderer({ part }: { part: ToolPart }) {
-  const isComplete = part.state === 'output-available';
-  const toolName = part.type.replace('tool-', '');
-
-  return (
-    <div className={cn(
-      "mt-2 p-3 rounded-lg border",
-      isComplete
-        ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800"
-        : "bg-purple-50 border-purple-200 dark:bg-purple-950 dark:border-purple-800"
-    )}>
-      <div className="text-sm font-medium mb-1">
-        {isComplete ? '✓' : '⚙️'} {toolName}
-      </div>
-      {part.input && (
-        <div className="text-xs font-mono text-muted-foreground">
-          {JSON.stringify(part.input, null, 2)}
-        </div>
-      )}
-      {isComplete && part.output && (
-        <div className="mt-2 text-xs">
-          <div className="font-medium mb-1">Result:</div>
-          <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-            {JSON.stringify(part.output, null, 2)}
-          </pre>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
  * Custom component for event status messages
  */
 function EventStatusRenderer({ part }: { part: DataPart }) {
   const status = part.data?.status || 'processing';
   const text = part.data?.text || '';
 
-  const statusStyles: Record<string, string> = {
-    'analyzing': 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800',
-    'processing': 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800',
-    'success': 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800',
-    'error': 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800',
-    'completed': 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800',
-    'event_found': 'bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800'
-  };
-
   return (
-    <div className={cn("mt-2 p-2 rounded border", statusStyles[status] || statusStyles.processing)}>
-      <div className="text-sm capitalize">{status.replace('_', ' ')}</div>
-      {text && <div className="text-sm mt-1">{text}</div>}
-      {part.data && Object.keys(part.data).filter(k => k !== 'status' && k !== 'text').length > 0 && (
-        <pre className="mt-1 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-          {JSON.stringify(
-            Object.fromEntries(
-              Object.entries(part.data).filter(([k]) => k !== 'status' && k !== 'text')
-            ),
-            null,
-            2
-          )}
-        </pre>
-      )}
+    <div className={"italic text-gray-500"}>
+      <span className="text-sm capitalize">{status.replace("_", " ")}: </span>
+      <span>{text}</span>
     </div>
   );
 }

@@ -222,21 +222,21 @@ TOOLS AVAILABLE:
           }
 
           // Emit step completion info
-          this.emitMessage(
-            createStatusMessage(
-              'assistant',
-              'event-detector',
-              'completed',
-              "Agent step completed",
-              {
-                finishReason,
-                toolCallCount: toolCalls?.length || 0,
-                toolResultCount: toolResults?.length || 0,
-                usage,
-              },
-              this.novelName
-            )
-          );
+          // this.emitMessage(
+          //   createStatusMessage(
+          //     'assistant',
+          //     'event-detector',
+          //     'completed',
+          //     "Agent step completed",
+          //     {
+          //       finishReason,
+          //       toolCallCount: toolCalls?.length || 0,
+          //       toolResultCount: toolResults?.length || 0,
+          //       usage,
+          //     },
+          //     this.novelName
+          //   )
+          // );
         },
       });
 
@@ -277,22 +277,6 @@ TOOLS AVAILABLE:
           globalStartPosition,
         },
         "Events and relationships detected in text chunk"
-      );
-
-      // Emit final result message
-      this.emitMessage(
-        createStatusMessage(
-          'assistant',
-          'event-detector',
-          'success',
-          "Chunk analysis complete",
-          {
-            eventCount: createdEventIds.length,
-            relationshipCount: createdRelationships,
-            eventIds: createdEventIds,
-          },
-          this.novelName
-        )
       );
 
       return createdEventIds;

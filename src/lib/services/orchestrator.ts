@@ -339,24 +339,9 @@ export class Orchestrator {
     );
 
     const chunkNumber = this.stats.chunksProcessed + 1;
-    const preview = chunkData.text.substring(0, 100).replace(/\n/g, ' ') + '...';
 
     logger.debug(
       `Processing chunk ${chunkNumber} - actualStart: ${chunkData.actualStart}, actualEnd: ${chunkData.actualEnd}, chunkLength: ${chunkData.text.length}`
-    );
-
-    // Analyze chunk for events
-    this.emitMessage(
-      createStatusMessage('system', 
-        'event-detector',
-        'analyzing',
-        `Analyzing chunk ${chunkNumber} for events`,
-        {
-          chunkLength: chunkData.text.length,
-          preview,
-        },
-        this.filename
-      )
     );
 
     const result = await this.eventDetector.simpleAnalysis(
@@ -421,22 +406,6 @@ export class Orchestrator {
     this.stats.chunksProcessed++;
     this.stats.currentPosition = this.novelReader.getCurrentPosition();
     this.stats.progress = this.novelReader.getProgress();
-
-    // Emit progress update
-    this.emitMessage(
-      createStatusMessage('system', 
-        'orchestrator',
-        'processing',
-        `Chunk ${chunkNumber} processed`,
-        {
-          chunksProcessed: this.stats.chunksProcessed,
-          eventsFound: this.stats.eventsFound,
-          progress: this.stats.progress,
-          currentPosition: this.stats.currentPosition
-        },
-        this.filename
-      )
-    );
 
     logger.debug(`Chunk processing complete - chunksProcessed: ${this.stats.chunksProcessed}, progress: ${this.stats.progress}%, currentPosition: ${this.stats.currentPosition}`);
   }
@@ -564,20 +533,6 @@ export class Orchestrator {
         const batchNumber = i + 1;
 
         try {
-          this.emitMessage(
-            createStatusMessage('system', 
-              'orchestrator',
-              'analyzing',
-              `Processing batch ${batchNumber}/${batches.length}`,
-              {
-                batchNumber,
-                totalBatches: batches.length,
-                eventsInBatch: batch.length,
-              },
-              this.filename
-            )
-          );
-
           logger.debug(
             { batchNumber, eventCount: batch.length },
             "Processing event batch"
