@@ -259,19 +259,19 @@ Analyze this context and establish temporal relationships between the events. Re
       const toolResults = await result.toolResults;
 
       const relationshipsCreated = toolResults.filter(
-        (tr) => tr.toolName === "create_relationship" &&
+        (tr) => tr && tr.toolName === "create_relationship" &&
           tr.output && typeof tr.output === 'object' &&
           'success' in tr.output && tr.output.success
       ).length;
 
       const datesAdded = toolResults.filter(
-        (tr) => tr.toolName === "update_event" &&
+        (tr) => tr && tr.toolName === "update_event" &&
           tr.output && typeof tr.output === 'object' &&
           'success' in tr.output && tr.output.success
       ).length;
 
       const masterEventsLinked = toolResults.filter(
-        (tr) => tr.toolName === "find_master_event" &&
+        (tr) => tr && tr.toolName === "find_master_event" &&
           tr.output && typeof tr.output === 'object' &&
           'found' in tr.output && tr.output.found
       ).length;

@@ -8,8 +8,7 @@
  * sendMessages is a stub — chat input is not wired up in this iteration.
  */
 
-import type { UIMessage, UIMessageChunk } from 'ai';
-import type { ChatTransport } from 'ai/ui';
+import type { UIMessage, UIMessageChunk, ChatTransport } from 'ai';
 
 /**
  * Parses a raw SSE ReadableStream into a ReadableStream of UIMessageChunk objects.
