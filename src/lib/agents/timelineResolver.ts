@@ -98,6 +98,7 @@ CRITICAL GUIDELINES:
 - Example: Text might say "after the battle, he rested" (A BEFORE B) but later say "before resting, the battle occurred" (A AFTER B)
 - Both relationships are valid and should be created with their supporting sourceText
 - Contradictions are EXPECTED and valuable - they reveal inconsistencies in the source material
+- Never create a relationship between an event and itself
 
 TEMPORAL MARKERS TO LOOK FOR:
 - Explicit: "the next day", "three weeks later", "meanwhile", "simultaneously", "earlier"
