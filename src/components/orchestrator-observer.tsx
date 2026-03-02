@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useMemo } from 'react';
+import { useChat } from '@ai-sdk/react';
 import type { UIMessage, TextUIPart, ReasoningUIPart } from 'ai';
 import {
   Conversation,
@@ -20,6 +21,7 @@ import {
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StorylineMessagePart } from '@/lib/utils/message-helpers';
+import { createSSETransport } from '@/lib/transport/sse-transport';
 import ToolRenderer from './tool-renderer';
 
 interface OrchestratorObserverProps {
@@ -28,64 +30,19 @@ interface OrchestratorObserverProps {
 }
 
 /**
- * New orchestrator observer using ai-elements components
- * Displays messages from multiple agents (orchestrator, event-detector, timeline-resolver, etc.)
+ * Orchestrator observer component.
+ * Uses useChat with a custom SSE transport so the AI SDK's
+ * processUIMessageStream handles all in-place message assembly.
+ * The transport's reconnectToStream is called automatically on mount
+ * (resume: true) and replays chunk history from the server.
  */
 export function OrchestratorObserver({ filename, className }: OrchestratorObserverProps) {
-  const [messages, setMessages] = useState<UIMessage[]>([]);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error' | 'closed'>('connecting');
-  const [error, setError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const transport = useMemo(() => createSSETransport(filename), [filename]);
 
-  // SSE connection setup
-  useEffect(() => {
-    if (!filename) {
-      setError('No filename provided');
-      return;
-    }
+  const { messages, status, error } = useChat({ transport, resume: true });
 
-    const eventSource = new EventSource(`/api/stream?filename=${encodeURIComponent(filename)}`);
-    eventSourceRef.current = eventSource;
-
-    eventSource.onopen = () => {
-      console.log('SSE connection opened');
-      setConnectionStatus('connected');
-      setError(null);
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        console.log("Trying to parse SSE message...");
-        const message: UIMessage = JSON.parse(event.data);
-        console.log('SSE message received:', message);
-
-        // Filter out ping messages (check role or metadata)
-        if (
-          message.role !== "system" ||
-          message.parts.length > 1 ||
-          message.parts[0].type !== "text" ||
-          message.parts[0].text !== "Keep-alive ping"
-        ) {
-          setMessages((prev) => [...prev, message]);
-        }
-      } catch (error) {
-        console.error('Failed to parse SSE message:', error, event.data);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error);
-      setConnectionStatus('error');
-      setError('Connection to server lost');
-    };
-
-    // Cleanup on unmount
-    return () => {
-      console.log('Cleaning up SSE connection');
-      eventSource.close();
-      setConnectionStatus('closed');
-    };
-  }, [filename]);
+  // Map useChat status to the ConnectionStatusBadge values
+  const connectionStatus = mapStatus(status, error);
 
   return (
     <div className={cn("h-full flex flex-col bg-muted/40", className)}>
@@ -98,7 +55,7 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950 dark:border-red-800">
           <div className="flex items-center">
             <AlertTriangle className="h-4 w-4 text-red-500 mr-2" />
-            <span className="text-sm text-red-700 dark:text-red-100">{error}</span>
+            <span className="text-sm text-red-700 dark:text-red-100">{error.message}</span>
           </div>
         </div>
       )}
@@ -119,6 +76,22 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
       </Conversation>
     </div>
   );
+}
+
+/**
+ * Maps useChat status (and error) to the ConnectionStatusBadge display state.
+ */
+function mapStatus(
+  status: string,
+  error: Error | undefined,
+): 'connecting' | 'connected' | 'error' | 'closed' {
+  if (error) return 'error';
+  switch (status) {
+    case 'streaming': return 'connected';
+    case 'submitted': return 'connecting';
+    case 'ready':     return 'closed';
+    default:          return 'closed';
+  }
 }
 
 /**
