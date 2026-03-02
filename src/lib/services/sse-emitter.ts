@@ -2,12 +2,12 @@
  * SSE (Server-Sent Events) Emitter Service
  *
  * Manages SSE connections and message broadcasting for the orchestrator system.
- * Provides a centralized, encapsulated way to handle connection lifecycle and message emission.
+ * Provides a centralized, encapsulated way to handle connection lifecycle and chunk emission.
  */
 
-import type { UIMessage } from 'ai';
+import type { UIMessageChunk } from 'ai';
 import { loggers } from '@/lib/utils/logger';
-import { appendMessage } from './message-store';
+import { appendChunk } from './message-store';
 
 const logger = loggers.api;
 
@@ -15,20 +15,20 @@ const logger = loggers.api;
 const sseConnections = new Map<string, Set<ReadableStreamDefaultController<Uint8Array>>>();
 
 /**
- * Global event emitter for orchestrator messages
- * Manages listeners for different files being processed
+ * Global event emitter for orchestrator messages.
+ * Manages listeners for different files being processed.
  */
 class OrchestratorEventEmitter {
-  private listeners = new Map<string, Set<(message: UIMessage) => void>>();
+  private listeners = new Map<string, Set<(chunk: UIMessageChunk) => void>>();
 
-  emit(filename: string, message: UIMessage) {
+  emit(filename: string, chunk: UIMessageChunk) {
     const listeners = this.listeners.get(filename);
     if (listeners) {
-      listeners.forEach(listener => listener(message));
+      listeners.forEach(listener => listener(chunk));
     }
   }
 
-  addListener(filename: string, listener: (message: UIMessage) => void) {
+  addListener(filename: string, listener: (chunk: UIMessageChunk) => void) {
     if (!this.listeners.has(filename)) {
       this.listeners.set(filename, new Set());
     }
@@ -57,7 +57,7 @@ if (!global.__orchestratorEvents) {
 export const orchestratorEvents = global.__orchestratorEvents;
 
 /**
- * Add an SSE connection controller for a specific file
+ * Add an SSE connection controller for a specific file.
  * @param filename - The file being processed
  * @param controller - The ReadableStream controller
  */
@@ -73,7 +73,7 @@ export function addConnection(
 }
 
 /**
- * Remove an SSE connection controller for a specific file
+ * Remove an SSE connection controller for a specific file.
  * @param filename - The file being processed
  * @param controller - The ReadableStream controller to remove
  */
@@ -92,7 +92,7 @@ export function removeConnection(
 }
 
 /**
- * Get the number of active SSE connections for a filename
+ * Get the number of active SSE connections for a filename.
  * @param filename - The file being processed
  * @returns Number of active connections
  */
@@ -102,8 +102,8 @@ export function getConnectionCount(filename: string): number {
 }
 
 /**
- * Get all connection controllers for a filename
- * Used internally by the SSE route to broadcast messages
+ * Get all connection controllers for a filename.
+ * Used internally by the SSE route to broadcast messages.
  * @param filename - The file being processed
  * @returns Set of connection controllers, or undefined if none exist
  */
@@ -114,26 +114,21 @@ export function getConnections(
 }
 
 /**
- * Helper function for orchestrator to emit messages
- * This will be imported and used by the orchestrator
- * Messages are now in AI SDK Message format
+ * Emits a UIMessageChunk to all listeners for a filename and persists it.
  *
  * @param filename - The file being processed
- * @param message - The UIMessage to emit
+ * @param chunk - The UIMessageChunk to emit
  */
-export function emitUIMessage(filename: string, message: UIMessage): void {
-  logger.debug({
-    filename,
-    role: message.role,
-  }, "Emitting orchestrator message");
-  orchestratorEvents.emit(filename, message);
-  // Persist fire-and-forget; errors are swallowed inside appendMessage
-  appendMessage(filename, message);
+export function emitChunk(filename: string, chunk: UIMessageChunk): void {
+  logger.debug({ filename, chunkType: chunk.type }, 'Emitting chunk');
+  orchestratorEvents.emit(filename, chunk);
+  // Persist fire-and-forget; errors are swallowed inside appendChunk
+  appendChunk(filename, chunk);
 }
 
 /**
- * Close all SSE connections for a filename
- * Cleans up both the connections and event listeners
+ * Close all SSE connections for a filename.
+ * Cleans up both the connections and event listeners.
  *
  * @param filename - The file being processed
  */

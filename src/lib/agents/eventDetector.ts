@@ -1,37 +1,34 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { ToolLoopAgent } from "ai";
+import type { UIMessageChunk } from "ai";
 import { createEventTools } from "../tools/event-tools";
 import { readCsv } from "../services/fileParser";
 import { loggers } from "../utils/logger";
-import type { UIMessage } from "ai";
-import {
-  createStatusMessage,
-  createReasoningMessage,
-} from "../utils/message-helpers";
+import { createStatusChunks } from "../utils/message-helpers";
 
 const logger = loggers.eventDetector;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
 
 /**
- * Event Detection Agent
- * Analyzes text chunks for significant events and creates Event nodes in the database
- * Also establishes temporal relationships between events
+ * Event Detection Agent.
+ * Analyzes text chunks for significant events and creates Event nodes in the database.
+ * Also establishes temporal relationships between events.
  */
 export class EventDetectorAgent {
   private masterEvents: Record<string, string>[] = [];
   private masterEventsEnabled: boolean = false;
   private systemPrompt: string = "";
-  private emitMessage: (message: UIMessage) => void;
+  private emitChunk: (chunk: UIMessageChunk) => void;
 
   constructor(
     private novelName: string,
-    emitMessage: (message: UIMessage) => void
+    emitChunk: (chunk: UIMessageChunk) => void
   ) {
-    this.emitMessage = emitMessage;
+    this.emitChunk = emitChunk;
   }
 
   /**
-   * Initializes the agent with optional master event spreadsheet
+   * Initializes the agent with optional master event spreadsheet.
    * @param {string} spreadsheetPath - Optional path to the CSV file containing master events
    */
   async initialize(spreadsheetPath?: string): Promise<void> {
@@ -66,7 +63,7 @@ export class EventDetectorAgent {
   }
 
   /**
-   * Builds the system prompt with optional master event context
+   * Builds the system prompt with optional master event context.
    * @returns {string} The system prompt
    */
   private buildSystemPrompt(): string {
@@ -144,8 +141,8 @@ TOOLS AVAILABLE:
   }
 
   /**
-   * Analyzes a text chunk for events using AI with tool calling
-   * Creates events and relationships in a single pass
+   * Analyzes a text chunk for events using AI with tool calling.
+   * Creates events and relationships in a single pass, streaming chunks to the SSE emitter.
    * @param {string} textChunk - The text to analyze
    * @param {number} globalStartPosition - Starting position of this chunk in the full novel
    * @returns {Promise<string[]>} Array of created event IDs, or empty array if no events found
@@ -164,26 +161,21 @@ TOOLS AVAILABLE:
         "Analyzing text chunk for events"
       );
 
-      // Emit analyzing message
-      this.emitMessage(
-        createStatusMessage(
-          'assistant',
-          'event-detector',
-          'analyzing',
-          "Starting chunk analysis",
-          {
-            chunkLength: textChunk.length,
-            globalStartPosition,
-          },
-          this.novelName
-        )
-      );
+      // Emit pre-analysis status
+      for (const c of createStatusChunks(
+        'event-detector',
+        'analyzing',
+        "Starting chunk analysis",
+        { chunkLength: textChunk.length, globalStartPosition }
+      )) {
+        this.emitChunk(c);
+      }
 
       // Create tools with context including emit function
       const tools = createEventTools({
         globalStartPosition,
         novelName: this.novelName,
-        emitMessage: this.emitMessage,
+        emitChunk: this.emitChunk,
         masterEventsEnabled: this.masterEventsEnabled,
         masterEvents: this.masterEvents,
       });
@@ -202,69 +194,30 @@ TOOLS AVAILABLE:
             },
           },
         },
-        onStepFinish: ({
-          reasoningText,
-          toolCalls,
-          toolResults,
-          finishReason,
-          usage,
-        }) => {
-          // Emit extended thinking content if present
-          if (reasoningText && reasoningText.trim()) {
-            this.emitMessage(
-              createReasoningMessage(
-                'assistant',
-                'event-detector',
-                reasoningText.substring(0, 500) + (reasoningText.length > 500 ? "..." : ""),
-                this.novelName
-              )
-            );
-          }
-
-          // Emit step completion info
-          // this.emitMessage(
-          //   createStatusMessage(
-          //     'assistant',
-          //     'event-detector',
-          //     'completed',
-          //     "Agent step completed",
-          //     {
-          //       finishReason,
-          //       toolCallCount: toolCalls?.length || 0,
-          //       toolResultCount: toolResults?.length || 0,
-          //       usage,
-          //     },
-          //     this.novelName
-          //   )
-          // );
-        },
       });
 
-      const result = await agent.generate({
-        prompt: textChunk,
-      });
+      const result = await agent.stream({ prompt: textChunk });
 
-      // Extract created event IDs and count relationships from tool results
+      // Stream all chunks to the SSE emitter
+      for await (const chunk of result.toUIMessageStream()) {
+        this.emitChunk(chunk);
+      }
+
+      // Collect event IDs and relationship counts from completed tool results
+      const toolResults = await result.toolResults;
       const createdEventIds: string[] = [];
       let createdRelationships = 0;
 
-      for (const toolResult of result.toolResults || []) {
-        if (
-          toolResult && toolResult.toolName === "create_event" &&
-          typeof toolResult.output === "object" &&
-          toolResult.output !== null
-        ) {
-          const resultObj = toolResult.output as { eventId?: string };
-          if (resultObj.eventId) {
-            createdEventIds.push(resultObj.eventId);
+      for (const toolResult of toolResults) {
+        if (!toolResult) continue;
+        if (toolResult.toolName === "create_event") {
+          const output = toolResult.output as { eventId?: string };
+          if (output?.eventId) {
+            createdEventIds.push(output.eventId);
           }
-        } else if (
-          toolResult && toolResult.toolName === "create_relationship" &&
-          typeof toolResult.output === "object" &&
-          toolResult.output !== null
-        ) {
-          const resultObj = toolResult.output as { success?: boolean };
-          if (resultObj.success) {
+        } else if (toolResult.toolName === "create_relationship") {
+          const output = toolResult.output as { success?: boolean };
+          if (output?.success) {
             createdRelationships++;
           }
         }
@@ -290,26 +243,21 @@ TOOLS AVAILABLE:
         "Failed to analyze text chunk"
       );
 
-      this.emitMessage(
-        createStatusMessage(
-          'assistant',
-          'event-detector',
-          'error',
-          "Failed to analyze chunk",
-          {
-            error: String(error),
-          },
-          this.novelName
-        )
-      );
+      for (const c of createStatusChunks(
+        'event-detector',
+        'error',
+        "Failed to analyze chunk",
+        { error: String(error) }
+      )) {
+        this.emitChunk(c);
+      }
 
       throw new Error(`Failed to analyze text chunk: ${error}`);
     }
   }
 
   /**
-   * Simple text analysis that returns "no event found" or calls createEventNode
-   * This is for the basic workflow described in the implementation plan
+   * Simple text analysis that returns "no event found" or calls createEventNode.
    * @param {string} textChunk - The text to analyze
    * @param {number} globalStartPosition - Starting position of this chunk in the full novel
    * @returns {Promise<string>} Either "no event found" or information about created events
@@ -331,7 +279,7 @@ TOOLS AVAILABLE:
   }
 
   /**
-   * Gets the current master events loaded in the agent
+   * Gets the current master events loaded in the agent.
    * @returns {Record<string, string>[]} Array of master events
    */
   getMasterEvents(): Record<string, string>[] {
@@ -339,7 +287,7 @@ TOOLS AVAILABLE:
   }
 
   /**
-   * Gets the novel name this agent is processing
+   * Gets the novel name this agent is processing.
    * @returns {string} Novel name
    */
   getNovelName(): string {
@@ -347,7 +295,7 @@ TOOLS AVAILABLE:
   }
 
   /**
-   * Checks if master events spreadsheet is enabled
+   * Checks if master events spreadsheet is enabled.
    * @returns {boolean} True if master events are loaded and enabled
    */
   isMasterEventsEnabled(): boolean {

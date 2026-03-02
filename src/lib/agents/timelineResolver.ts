@@ -1,37 +1,34 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { ToolLoopAgent } from "ai";
-import type { UIMessage } from "ai";
+import type { UIMessageChunk } from "ai";
 import { createEventTools } from "../tools/event-tools";
 import { EventNode, getBatchRelationships } from "../db/events";
 import { loggers } from "../utils/logger";
-import {
-  createStatusMessage,
-  createReasoningMessage,
-} from "../utils/message-helpers";
+import { createStatusChunks } from "../utils/message-helpers";
 
 const logger = loggers.timeline;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
 
 /**
- * Timeline Resolver Agent
+ * Timeline Resolver Agent.
  * Second-pass agent that analyzes batches of nearby events to establish comprehensive
- * temporal relationships and infer dates from surrounding context
+ * temporal relationships and infer dates from surrounding context.
  */
 export class TimelineResolverAgent {
   private masterEvents: Record<string, string>[] = [];
   private masterEventsEnabled: boolean = false;
   private systemPrompt: string = "";
-  private emitMessage: (message: UIMessage) => void;
+  private emitChunk: (chunk: UIMessageChunk) => void;
 
   constructor(
     private novelName: string,
-    emitMessage: (message: UIMessage) => void
+    emitChunk: (chunk: UIMessageChunk) => void
   ) {
-    this.emitMessage = emitMessage;
+    this.emitChunk = emitChunk;
   }
 
   /**
-   * Initializes the agent with optional master event spreadsheet
+   * Initializes the agent with optional master event spreadsheet.
    * @param {Record<string, string>[]} masterEvents - Optional master events data
    */
   async initialize(masterEvents?: Record<string, string>[]): Promise<void> {
@@ -64,7 +61,7 @@ export class TimelineResolverAgent {
   }
 
   /**
-   * Builds the system prompt for timeline resolution
+   * Builds the system prompt for timeline resolution.
    * @returns {string} The system prompt
    */
   private buildSystemPrompt(): string {
@@ -149,7 +146,8 @@ Remember: Your job is to document what the text says, not to resolve contradicti
   }
 
   /**
-   * Analyzes a batch of nearby events with surrounding context to establish relationships
+   * Analyzes a batch of nearby events with surrounding context to establish relationships.
+   * Streams all agent output as UIMessageChunks to the SSE emitter.
    * @param {EventNode[]} events - Batch of nearby events
    * @param {string} contextText - Surrounding text from the novel
    * @returns {Promise<{ relationshipsCreated: number; datesAdded: number; masterEventsLinked: number }>}
@@ -172,19 +170,14 @@ Remember: Your job is to document what the text says, not to resolve contradicti
         "Analyzing event batch for timeline resolution"
       );
 
-      this.emitMessage(
-        createStatusMessage(
-          'assistant',
-          'timeline-resolver',
-          'analyzing',
-          `Analyzing batch of ${events.length} events`,
-          {
-            eventCount: events.length,
-            contextLength: contextText.length,
-          },
-          this.novelName
-        )
-      );
+      for (const c of createStatusChunks(
+        'timeline-resolver',
+        'analyzing',
+        `Analyzing batch of ${events.length} events`,
+        { eventCount: events.length, contextLength: contextText.length }
+      )) {
+        this.emitChunk(c);
+      }
 
       // Get existing relationships for these events
       const eventIds = events.map(e => e.id);
@@ -195,7 +188,7 @@ Remember: Your job is to document what the text says, not to resolve contradicti
       const tools = createEventTools({
         globalStartPosition: 0,
         novelName: this.novelName,
-        emitMessage: this.emitMessage,
+        emitChunk: this.emitChunk,
         masterEventsEnabled: this.masterEventsEnabled,
         masterEvents: this.masterEvents,
       });
@@ -253,71 +246,34 @@ Analyze this context and establish temporal relationships between the events. Re
             },
           },
         },
-        onStepFinish: ({
-          reasoningText,
-          toolCalls,
-          toolResults,
-          finishReason,
-          usage,
-        }) => {
-          // Emit extended thinking content if present
-          if (reasoningText && reasoningText.trim()) {
-            this.emitMessage(
-              createReasoningMessage(
-                'assistant',
-                'timeline-resolver',
-                reasoningText.substring(0, 500) + (reasoningText.length > 500 ? "..." : ""),
-                this.novelName
-              )
-            );
-          }
-
-          // // Emit step completion info
-          // this.emitMessage(
-          //   createStatusMessage(
-          //     'assistant',
-          //     'timeline-resolver',
-          //     'completed',
-          //     "Agent step completed",
-          //     {
-          //       finishReason,
-          //       toolCallCount: toolCalls?.length || 0,
-          //       toolResultCount: toolResults?.length || 0,
-          //       usage,
-          //     },
-          //     this.novelName
-          //   )
-          // );
-        },
       });
 
-      const result = await agent.generate({
-        prompt,
-      });
+      const result = await agent.stream({ prompt });
 
-      // Count statistics from tool results
-      const relationshipsCreated = result.toolResults.filter(
-        (tr) => tr && tr.toolName === "create_relationship" && 'result' in tr && tr.result && typeof tr.result === 'object' && 'success' in tr.result && tr.result.success
+      // Stream all chunks to the SSE emitter
+      for await (const chunk of result.toUIMessageStream()) {
+        this.emitChunk(chunk);
+      }
+
+      // Collect statistics from completed tool results
+      const toolResults = await result.toolResults;
+
+      const relationshipsCreated = toolResults.filter(
+        (tr) => tr && tr.toolName === "create_relationship" &&
+          tr.output && typeof tr.output === 'object' &&
+          'success' in tr.output && tr.output.success
       ).length;
 
-      const datesAdded = result.toolResults.filter(
-        (tr) =>
-          tr && tr.toolName === "update_event" &&
-          'result' in tr &&
-          tr.result &&
-          typeof tr.result === 'object' &&
-          'success' in tr.result &&
-          tr.result.success
+      const datesAdded = toolResults.filter(
+        (tr) => tr && tr.toolName === "update_event" &&
+          tr.output && typeof tr.output === 'object' &&
+          'success' in tr.output && tr.output.success
       ).length;
 
-      const masterEventsLinked = result.toolResults.filter(
-        (tr) =>
-          tr && tr.toolName === "find_master_event" &&
-          'result' in tr &&
-          tr.result &&
-          typeof tr.result === 'object' &&
-          'found' in tr.result &&
-          tr.result.found
+      const masterEventsLinked = toolResults.filter(
+        (tr) => tr && tr.toolName === "find_master_event" &&
+          tr.output && typeof tr.output === 'object' &&
+          'found' in tr.output && tr.output.found
       ).length;
 
       logger.info(
@@ -330,20 +286,14 @@ Analyze this context and establish temporal relationships between the events. Re
         "Batch analysis complete"
       );
 
-      this.emitMessage(
-        createStatusMessage(
-          'assistant',
-          'timeline-resolver',
-          'success',
-          `Batch analysis complete: ${relationshipsCreated} relationships, ${datesAdded} dates, ${masterEventsLinked} master events`,
-          {
-            relationshipsCreated,
-            datesAdded,
-            masterEventsLinked,
-          },
-          this.novelName
-        )
-      );
+      for (const c of createStatusChunks(
+        'timeline-resolver',
+        'success',
+        `Batch analysis complete: ${relationshipsCreated} relationships, ${datesAdded} dates, ${masterEventsLinked} master events`,
+        { relationshipsCreated, datesAdded, masterEventsLinked }
+      )) {
+        this.emitChunk(c);
+      }
 
       return {
         relationshipsCreated,
@@ -352,18 +302,16 @@ Analyze this context and establish temporal relationships between the events. Re
       };
     } catch (error) {
       logger.error({ error, eventCount: events.length }, "Failed to analyze batch");
-      this.emitMessage(
-        createStatusMessage(
-          'assistant',
-          'timeline-resolver',
-          'error',
-          `Failed to analyze batch: ${error}`,
-          {
-            error: String(error),
-          },
-          this.novelName
-        )
-      );
+
+      for (const c of createStatusChunks(
+        'timeline-resolver',
+        'error',
+        `Failed to analyze batch: ${error}`,
+        { error: String(error) }
+      )) {
+        this.emitChunk(c);
+      }
+
       throw new Error(`Failed to analyze batch: ${error}`);
     }
   }
