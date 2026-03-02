@@ -209,6 +209,7 @@ TOOLS AVAILABLE:
       let createdRelationships = 0;
 
       for (const toolResult of toolResults) {
+        if (!toolResult) continue;
         if (toolResult.toolName === "create_event") {
           const output = toolResult.output as { eventId?: string };
           if (output?.eventId) {
