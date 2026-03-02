@@ -1,0 +1,566 @@
+id,date,character,event
+master-1,1877,Wolf in Schönbrunn Menagerie,Markus Epper watches a she-wolf (Book 3)
+master-2,1891,Doctor and kittens,(Born 1885)
+master-3,1891,Mainhard Moser,(Born in 1880 in Munich)
+master-4,1891,Thomas Persoon,"(Born in 1872 in Rotterdam; settles in Ava, NW of Utica)"
+master-5,1907,Mainhard Moser,"Settles in Dresden, NY"
+master-6,1907,Thomas Persoon,Daughter Lisa born
+master-7,1912,Wolfram Pichler,Born in Wannsee
+master-8,1914,Doctor and kittens,Studying dysentery in The Philippines
+master-9,1914,Mainhard Moser,Niece sara Purton born
+master-10,1920,Jaagup,Jaagup born
+master-11,1920,Monika Woodapple,Woodapple born
+master-12,1920,Thomas Persoon,"Publishes ""On Rare Boleti of NYS"""
+master-13,1925,Samuel's father,Father born
+master-14,1925,"Dr. J. A. Barend de Hühl, Ackwieno",de Hühl director of the Berlin zoo (45 years old)
+master-15,1925,Mainhard Moser,Sara Purton collects mushroom (age 11)
+master-16,1928,Wolfram Pichler,Intern in Potsdam
+master-17,1928,Hans-Myrl,Born in Seebüll
+master-18,1928,Thomas Persoon,Catalogue of North American Boleti
+master-19,1929,Jaagup,Pekka's father born
+master-20,1930,Wolfram Pichler,First dated image (he is 18)
+master-21,1930,Bear,Bear born
+master-22,1930,Hyena and dingo,Hyena born in Südwestafrika
+master-23,1930,Mainhard Moser,Sarah Purton dies (16 yrs. old)
+master-24,1930,Thomas Persoon,Sends condolances to Moser
+master-25,1931,Hyena and dingo,Dingo born
+master-26,1931,"Dr. J. A. Barend de Hühl, Ackwieno",Ackwieno researches lemurs (30 years old)
+master-27,1931,Mainhard Moser,Publishes Keys to Agarics and Boleti (51 years old)
+master-28,1934,Wolfram Pichler,"Studying in Potsdam, draws for Ackwieno"
+master-29,1934,"Dr. J. A. Barend de Hühl, Ackwieno",Ackwieno publishes his paper in French
+master-30,1934,Thomas Persoon,Demonstrates blue hyphae to Moser in Herkimer
+master-31,1935,Hyena and dingo,Dingo collected in Coober Pedy
+master-32,1935,Thomas Persoon,Memoirs of a Life in Mycology
+master-33,1936,"Dr. J. A. Barend de Hühl, Ackwieno",Ackwieno publishes his paper in German
+master-34,1936,Mainhard Moser,Moves to a house in Canandaigua
+master-35,1937,Martha,Born (in Germany)
+master-36,1937,Hans Raaflaub,Born in Breslau
+master-37,1937,Wolfram Pichler,He is 25. Observing Venus; meets Monika
+master-38,1937,Monika Woodapple,Observing the hyena; meets Wolfram
+master-39,1937,Bear,Bear begins scratching
+master-40,1937,Mainhard Moser,Revision of Keys to Agarics and Boleti (he is 57)
+master-41,1937,Thomas Persoon,"Dies (65 years old), survived by daughter Lisa"
+master-42,1938,Wolfram Pichler,Hired in the observatory; essay on comets
+master-43,1938,Monika Woodapple,Submits 1st essay
+master-44,1939,Wolfram Pichler,Himmels- erscheinungen der Planeten  (age 27)
+master-45,1939,Monika Woodapple,"Publishes 1st essay, submits 2nd essay on dingos"
+master-46,1939,Hyena and dingo,March: hyena dies  June: dingo transferred
+master-47,1941,Monika Woodapple,"Publishes 2nd essay, observes  the bear in Berlin"
+master-48,1941,Hans-Myrl,Zeiss factory repurposed for military uses
+master-49,1941,Mainhard Moser,De Americae Septentrionalis boletes
+master-50,1943,Hyena and dingo,November: dingo escapes and is shot
+master-51,1944,Martha,Picks mushrooms in the Hohe Schrecke
+master-52,1944,Samuel's father,In the Army
+master-53,1944,Jaagup,Jaagup deported (age 24)
+master-54,1944,Bear,Bear stops (16 years)
+master-55,1945,Monika Woodapple,Starts work at Dählhölzli zoo
+master-56,1945,Bear,Fall of Berlin; bear is stabbed
+master-57,1945,"Dr. J. A. Barend de Hühl, Ackwieno","Berlin zoo bombed, de Hühl dies"
+master-58,1945,Mainhard Moser,Living Fabric of Plants (age 65)
+master-59,1951,Samuel's father,Discharged; in college
+master-60,1951,Hans-Myrl,Factory resumes making scientific instruments
+master-61,1951,Doctor and kittens,Dies from amoebic dysentery (age 66)
+master-62,1953,Catherine,"Catherine born (8 years older than S) Alice, Texas"
+master-63,1953,Anneliese,"Anneliese born, in Roggwil, Switzerland"
+master-64,1953,Mainhard Moser,Dies (83 years old)
+master-65,1955,Martha,"Marries Nikolaus (she's 18, he's 27) Potsdam."
+master-66,1955,Samuel's father,Medical school
+master-67,1955,Anneliese,(Mother calls her Annabelle; dog is Knuddelbär)
+master-68,1955,Hans Raaflaub,FC Basel football team
+master-69,1956,Martha,Trains as an astronomer in Potsdam (age 19)
+master-70,1956,Hans Raaflaub,"Marries first wife Marlene (he is 20, she is 19)"
+master-71,1957,Martha,"Possible affair with Pichler (he is 45, she's 20.)"
+master-72,1957,Samuel's father,Quits medical school
+master-73,1957,Anneliese,Parents move to Berne
+master-74,1957,Hans Raaflaub,Works at the Henkel plant in Basel
+master-75,1957,Wolfram Pichler,Possible affair with Martha
+master-76,1957,Monika Woodapple,"Retires from Dählhölzli zoo, Bern"
+master-77,1957,Adela's mother,Born
+master-78,1959,Martha,Daughter born (she is unnamed).
+master-79,1959,Samuel's father,Works as an orderly
+master-80,1960,Martha,First husband and daughter die. Moves to NYC.
+master-81,1960,Paul,Born
+master-82,1961,Martha,Works in the NY Botanical Garden.
+master-83,1961,Anneliese,Father gives her a toy farm
+master-84,1962,Martha,Takes classes in botany at Fordham.
+master-85,1962,Samuel's father,Fordham University
+master-86,1962,Wolfram Pichler,"Works for Zeiss in Jena, making power supplies"
+master-87,1962,Hans-Myrl,Meets Wolfram
+master-88,1963,Martha,MS in Botany. Meets Samuel's father.
+master-89,1963,Samuel's father,Meets Samuel's mother (he is 38)
+master-90,1964,Martha,Love letters to S's father
+master-91,1965,Martha,Samuel's parents marry (she is 28)
+master-92,1965,Samuel's father,Marries (he is 40)
+master-93,1965,Alec,Alec born (6 years older than Samuel)
+master-94,1965,Jaagup,Jaagup rescued
+master-95,1966,Samuel's father,"Gives up college, enrolls in business school"
+master-96,1968,Anneliese,Boyfriend Urs
+master-97,1968,Monika Woodapple,Monika visits Paul and Anneliese
+master-98,1969,Martha,Samuel's parents move to Watkins Glen.
+master-99,1969,Samuel's father,Works at Schuyler County Chamber of Commerce
+master-100,1969,Monika Woodapple,Monika dies
+master-101,1969,"Agathe, Ted",Agathe born (7 years younger than Samuel)
+master-102,1970,Catherine,Trip to Argentina and Bolivia
+master-103,1970,Anneliese,Boyfriend Willermus
+master-104,1970,Hans Raaflaub,"First wife dies (he is 34, they were married 14 years)"
+master-105,1971,Samuel,Born
+master-106,1971,Martha,Martha is 34. Sells property to Paolo.
+master-107,1971,Catherine,College: studies music (organ)
+master-108,1971,Doctor and kittens,"John Craig, doctor's grandson, born (S's age)"
+master-109,1972,Martha,Samuel's mother's mother dies in Germany
+master-110,1972,Anneliese,Enrolls in the University of Basel
+master-111,1972,Hans Raaflaub,Marries second wife (he is 36)
+master-112,1973,Samuel,S's mother's parents visit from Germany
+master-113,1973,Catherine,Works in a music store (New Jersey)
+master-114,1973,Anneliese,(Calls herself Anni)
+master-115,1974,Martha,Samuel's mother's father dies in Germany
+master-116,1974,Catherine,Works in shipbuilding (Denmark)
+master-117,1974,Hans-Myrl,Factory shuts down
+master-118,1975,Samuel,S's mother's parents are both dead
+master-119,1975,Martha,"Photo of Sam and the microscope, when Sam was 5."
+master-120,1975,Catherine,Works as an organ technician (Switzerland)
+master-121,1975,Anneliese,Begins keeping notebooks (22 years old)
+master-122,1976,Samuel,Father dies (Sam is 5 1/2)
+master-123,1976,Martha,Husband dies (she is 39)
+master-124,1976,Samuel's father,December: dies of an aneurysm
+master-125,1976,Alec,Father dies (Alec is 11 years old)
+master-126,1976,Pekka Stserispaa,Born
+master-127,1976,Jaagup,Pekka's father is 47
+master-128,1977,Samuel,"The clearing in the thicket, the toy. Trip to Nova Scotia"
+master-129,1977,Martha,Trip to Nova Scotia with the children
+master-130,1977,Alec,Alec goes to middle school
+master-131,1977,Catherine,Trip to Kazakhstan (entire year)
+master-132,1977,Anneliese,PhD studies at the University of Potsdam
+master-133,1977,Adela's mother,Studies German history in Munich
+master-134,1978,Samuel,Playing in the pond with John; 7 or 8 years old
+master-135,1978,Catherine,Studies biology at Smith (25 years old)
+master-136,1978,Anneliese,Asks Wolfram to draw diagrams
+master-137,1978,Wolfram Pichler,Anneliese asks him to draw diagrams
+master-138,1978,Adela's mother,"Married, age 21"
+master-139,1978,Doctor and kittens,John played in the pond with S.
+master-140,1979,Samuel,"The mulberry tree  ""8 or 9 or 10"" (40 years ago), in May"
+master-141,1979,Adela,Born
+master-142,1979,Adela's mother,Adela born
+master-143,1980,Samuel,Dog Harper; John supposed to come out to play
+master-144,1980,Paul,"College, then law school"
+master-145,1980,Dr. Maria-Kristiina Tank,"Born in Saue (3 1, 4 2), family name Järv"
+master-146,1980,Adela's mother,Ekaterina born
+master-147,1980,Ekaterina),Ekaterina born
+master-148,1980,Doctor and kittens,John supposed to come out and play (40 years ago)
+master-149,1981,Samuel,The high pine; elementary school graduation
+master-150,1981,Alec,Alec moves away from home
+master-151,1981,Doctor and kittens,John in Elementary School year book
+master-152,1982,Samuel,Halloween with Billy (he has forgotten)
+master-153,1982,Alec,Alec traveling
+master-154,1982,Catherine,"Graduate school, genetics (Northwestern)"
+master-155,1982,Anneliese,Mother dies
+master-156,1982,Adela's mother,(Husband is unfaithful)
+master-157,1983,Samuel,"(""Blackout years"" 1982–1998)"
+master-158,1983,Adela,Adela's grandmother kills herself
+master-159,1983,Alec,His bedroom becomes an astronomy library
+master-160,1983,Adela's mother,Her mother dies by suicide
+master-161,1984,Samuel,Trip to Europe with high school students and Billy
+master-162,1984,John Preteen,John born
+master-163,1984,Adela's mother,"Paris, teaches history at Ecole Jeannine Manuel"
+master-164,1985,Samuel,John almost dies
+master-165,1985,Catherine,Meets Benjamin Birnstorck (later teaches Viperine)
+master-166,1985,Albert,Albert (Rosie's brother) born
+master-167,1985,Anneliese,Stays at Grand Hôtel Wehekopf
+master-168,1985,Paul,Works as laywer's assistant
+master-169,1985,Dr. Maria-Kristiina Tank,Childhood friend Florina Ifscher
+master-170,1985,François Aucoin,Born
+master-171,1985,Doctor and kittens,Put in an induced coma
+master-172,1986,Samuel,Made photographs of the yard (15 years old)
+master-173,1986,Pekka Stserispaa,Pekka is 10
+master-174,1986,Jaagup,Pekka's father dies (age 57)
+master-175,1986,Jan,Jan born
+master-176,1987,Samuel,Harper dies
+master-177,1987,Catherine,"Research on Scorpionidae, Chelifer (Iceland)"
+master-178,1987,Adela's mother,Teaches at Paris Diderot
+master-179,1988,Samuel,High school graduation
+master-180,1988,Alec,Alec goes to law school
+master-181,1988,Catherine,Research on Scorpionidae (Crete)
+master-182,1988,Rosie,Rosie born
+master-183,1989,Samuel,Left for college: Colgate University
+master-184,1989,Martha,Finds specimen of Boletus mycelio
+master-185,1989,Alec,Marries Karen
+master-186,1989,Catherine,Postdoc at Oxford. Meets Anneliese.
+master-187,1989,Anneliese,At Oxford. Meets Catherine.
+master-188,1989,Dr. Maria-Kristiina Tank,(Estonian independence)
+master-189,1989,Adela's mother,Stepanka born
+master-190,1989,Stepánka,Stepánka born
+master-191,1989,"Agathe, Ted","Enrolls at University of Toronto, studies chemistry"
+master-192,1989,Doctor and kittens,John's family moves to the south. Mark moves away.
+master-193,1990,Samuel,"Class on blood. The Yukon (19 y. old, 29 years ago)"
+master-194,1990,Alec,Daughter Emma
+master-195,1990,Catherine,Working with Anneliese
+master-196,1990,Vipesh,Born in Mae Sot
+master-197,1990,Anneliese,"Year at Oxford with ℂ. Notebooks A, B, C"
+master-198,1990,Fungus gnat,Fungus gnat born
+master-199,1990,Adela's mother,Leaves her husband and returns to Bratislava
+master-200,1990,"Dr. J. A. Barend de Hühl, Ackwieno",Ackwieno dies (age 89)
+master-201,1991,Samuel,Professor suggests he specialize in protozoa
+master-202,1991,Martha,Martha is living at home by herself (she is 54)
+master-203,1991,Alec,"Drops out, works for a horse breeder"
+master-204,1991,Catherine,"Postdoc in Reykjavik, in metrology"
+master-205,1991,Anneliese,Wolfram visits. Studies meta- genomics. Map of the USSR.
+master-206,1991,Wolfram Pichler,Visits Anneliese
+master-207,1991,Phorid fly,"Phorid fly born in spring, dies in winter"
+master-208,1991,Fungus gnat,"Thaws prematurely, dies two days later"
+master-209,1992,Samuel,First trip to Europe
+master-210,1992,Catherine,Works at a fish processing plant (Iceland)
+master-211,1992,Anneliese,Begins magnum opus. Fills 41 A2 black notebooks.
+master-212,1992,John Preteen,Bee born
+master-213,1992,Sirje Kukk,Born in Tallinn
+master-214,1993,Samuel,Graduate school at Emory. Buys microscope.
+master-215,1993,Alec,Becomes part owner
+master-216,1993,Catherine,"Gets her PhD. Visits A., sees the Black Notebooks"
+master-217,1993,Anneliese,Hired at University of Basel.  C. visits her.
+master-218,1993,Hans-Myrl,Retires to Ft. Myers
+master-219,1993,"Agathe, Ted","Grad school, U. of Toronto (inorganic chemistry)"
+master-220,1994,Samuel,Lab on wood cross-sections
+master-221,1994,Alec,"Sells the business, buys a small farm, daughter Sky"
+master-222,1994,Anneliese,Moves to Basel. Wolfram Pichler dies.
+master-223,1994,Hans Raaflaub,Second wife dies (22 years married)
+master-224,1994,Wolfram Pichler,"Wolfram dies, age 82"
+master-225,1995,Martha,(she is 58)
+master-226,1995,Catherine,Joins the Water Department (24 years ago)
+master-227,1995,Rosie,Rosie in Sweden (ages 7-9)
+master-228,1995,Viperine,Born in Moulins
+master-229,1995,Anneliese,"Warned about absences, ignoring students"
+master-230,1995,Jaagup,Jaagup dies (age 75)
+master-231,1996,Samuel,"Helps Paolo find a boundary line, gets PhD"
+master-232,1996,Alec,Helps Samuel find a boundary line in the property
+master-233,1996,Anneliese,Colleagues stop visiting; father dies
+master-234,1997,Samuel,Postdoc in Toronto
+master-235,1997,Rosie,Rosie in Abu Dhabi
+master-236,1997,Anneliese,Accused of writing notes in other people's labs
+master-237,1997,Paul,Moves back to his family home
+master-238,1998,Samuel,Publishes three scientific papers on amoebas
+master-239,1998,Anneliese,"Caught in Früchtel's home, rearranging books"
+master-240,1998,Luzia,Luzia born
+master-241,1998,"Agathe, Ted",PhD
+master-242,1999,Samuel,Joins Water Deptartment (20 years ago)
+master-243,1999,Martha,Writes treatise on scientific thinking
+master-244,1999,Rosie,Germany for one year
+master-245,1999,Anneliese,"Fired, moves back with Hans, buys gray notebooks."
+master-246,1999,Luzia,Father abandons the family
+master-247,1999,Dr. Maria-Kristiina Tank,Tartu University
+master-248,1999,"Agathe, Ted",Meets Ted
+master-249,2000,Samuel,Meets Adela. Two more papers on amoebas
+master-250,2000,Adela,In Guelph as a grad student. Meets Samuel.
+master-251,2000,Catherine,Meets Adela
+master-252,2000,Anneliese,"(See tab ""Anneliese's book"" for her writing)"
+master-253,2000,Ekaterina),Marries Ctik
+master-254,2000,"Agathe, Ted",Joins the Water Department
+master-255,2001,Samuel,"Marries Adela, in Guelph."
+master-256,2001,Adela,Marries S; Fina born; English lessons; Natick
+master-257,2001,Alec,Mushroom hunting
+master-258,2001,Rosie,"Rosie's father leaves her mother, goes to Canada"
+master-259,2001,Anneliese,Gets a part-time job in a pharmacy (?)
+master-260,2001,Marvin,"Marvin born in Lake Alfred, Florida"
+master-261,2002,Samuel,First visit to Slovakia. Paper on amoebas
+master-262,2002,Martha,She is weaker: only shorter forays
+master-263,2002,Catherine,"Biologics Supervisor, Harris Treatment Plant"
+master-264,2002,Rosie,Rosie's mother dies
+master-265,2002,Anneliese,Fired for doing her own experiments
+master-266,2002,Jan,Samuel's first visit (he is 16)
+master-267,2002,Maschinka,Maschinka born (Ekaterina is 22); Samuel's first visit
+master-268,2002,Stepánka,Samuel's first visit (she is 13)
+master-269,2003,Samuel,Second visit to Slovakia
+master-270,2003,Martha,Interest in jigsaw puzzles; Tee visits less often
+master-271,2003,Marvin,Marvin captured and sold to Hogle Zoo
+master-272,2004,Samuel,Third visit to Slovakia; mushroom hunt
+master-273,2004,Adela,Works at local television station; yoga lessons
+master-274,2004,Martha,Alec's last visit
+master-275,2004,Alec,Last mushroom hunt (begins disappearance)
+master-276,2004,Catherine,Meets Chris
+master-277,2004,Rosie,Albert takes over the farm in Oustic (he is 19)
+master-278,2004,Luzia,Mother dies; she is taken in by Paul
+master-279,2004,Dr. Maria-Kristiina Tank,"Tartu University, graduate school in biology"
+master-280,2004,Marvin,Marvin paired with another alliergator
+master-281,2004,François Aucoin,College: Colgate
+master-282,2005,Samuel,"Mother's confession  (he is 34, she is 71)"
+master-283,2005,Adela,Visits Slovakian Cultural Center in Toronto
+master-284,2005,Martha,Mother's confession about Nicholas (Nikolaus)
+master-285,2006,Samuel,Two papers on amoebas; A. and F. in Watkins Glen
+master-286,2006,Adela,Writing lessons; brings guests from yoga and writing
+master-287,2006,Martha,Fina's last visit; mushroom hunt (from the car)
+master-288,2006,Anneliese,Develops the ladder of unreason
+master-289,2006,Dr. Maria-Kristiina Tank,Marries Leksik Tank
+master-290,2007,Samuel,Samuel visits Alec (mushrooms chapter)
+master-291,2007,Adela,Adela's friends from Slovakian Cultural Center come to dinner
+master-292,2007,Alec,"(Emma is 17, Sky is 13)"
+master-293,2007,Dr. Maria-Kristiina Tank,"Son, Kainus, born with cerebral palsy"
+master-294,2007,Ekaterina),Maschinka and Ekaterina visit Guelph
+master-295,2007,Maschinka,Visits Guelph
+master-296,2008,Samuel,Helps Paolo with his property line
+master-297,2008,Adela,Natick runs away
+master-298,2008,Martha,Walks with Samuel in Watkins Glen gorge
+master-299,2008,Vipesh,At Thammasat University
+master-300,2008,Hans Raaflaub,Alzheimer's begins
+master-301,2008,John Preteen,John Preteen hired at Hogle Zoo
+master-302,2008,François Aucoin,"MBA, Clarkson University School of Business"
+master-303,2009,Samuel,"End of the ""ten years... of their happiness"""
+master-304,2009,Adela,Second 10 years with Samuel
+master-305,2009,Martha,Mother dies in December (72 years old)
+master-306,2009,Alec,"Alec answers fewer emails, visits less"
+master-307,2009,Catherine,Adopts Sheila (10-year old)
+master-308,2009,Stuart Zachery,Stuart Zachery born
+master-309,2009,Anneliese,Last academic collaborator (Schall)
+master-310,2009,Stepánka,Married an Englishman
+master-311,2009,Doctor and kittens,John Craig dies in Austria
+master-312,2010,Samuel,Samuel and Tee close the house (late winter)
+master-313,2010,Alec,Emma marries Marshall
+master-314,2010,Catherine,Sheila in special middle school
+master-315,2010,Rosie,Rosie moves to Guelph
+master-316,2010,Anneliese,Invents the Encephalo- phagous theory
+master-317,2010,Sirje Kukk,College at UCL
+master-318,2011,Samuel,Adela's first longer visits back home
+master-319,2011,Alec,Tee is the conduit to Alec
+master-320,2011,Rosie,Rosie hired by the Water Department
+master-321,2011,Viperine,Studies science at Paris-huit (she is 16 years old)
+master-322,2011,Dr. Maria-Kristiina Tank,Friend Florina Ifscher gets job at Tartu regional zoo
+master-323,2011,François Aucoin,MBA
+master-324,2012,Samuel,Visits Alec at his farm
+master-325,2012,Alec,"Last time Samuel sees Alec, at his farm"
+master-326,2012,Catherine,Tells Anneliese Samuel could read her work
+master-327,2012,Vipesh,Graduates with MS
+master-328,2012,Anneliese,Hears abour Samuel from Catherine
+master-329,2012,Dr. Maria-Kristiina Tank,"Works at Tallinn Zoo, entry level"
+master-330,2012,Stepánka,Divorced
+master-331,2012,François Aucoin,"Starts at City Hall, Guelph"
+master-332,2012,Gunngeir Margeirsson,Born
+master-333,2013,Adela,Fired by television station
+master-334,2013,Viperine,"Quits Paris-huit (or is expelled), moves to NYC"
+master-335,2013,Vipesh,Works for Thai Rubber Association
+master-336,2013,Anneliese,Researching Samuel as her ideal reader
+master-337,2013,Dr. Maria-Kristiina Tank,PhD from Tallinn University
+master-338,2013,Owole,Owole born (?) in Rwanda
+master-339,2014,Samuel,Adela's friends come to dinner
+master-340,2014,Adela,Adela's friends come to dinner
+master-341,2014,Alec,Alec stops answering emails or calls about here
+master-342,2014,Viperine,Works at Prospect Park Zoo
+master-343,2014,Sirje Kukk,Graduate work at Imperial College London
+master-344,2014,Owole,Owole and her sister wild-collected
+master-345,2015,Samuel,Last visit to Slovakia; visits Tee for Christmas
+master-346,2015,Adela,Works at Agourec Pharmaceuticals
+master-347,2015,Viperine,Writes essays on orangutans
+master-348,2015,Dr. Maria-Kristiina Tank,Hourly lecturer at Tartu Ülikool
+master-349,2015,Owole,Sent to Knoxville Zoo
+master-350,2015,Adela's mother,Samuel's last visit (she is 58)
+master-351,2015,Ekaterina),Samuel's last visit (she is 35)
+master-352,2015,Maschinka,Samuel's last visit (she is 13)
+master-353,2015,Stepánka,Samuel's last visit (she is 26)
+master-354,2016,Samuel,"Last visit to Tee, for Thanksgiving"
+master-355,2016,Catherine,Sheila runs away (17 years old)
+master-356,2016,Rosie,Joe moves in with Rosie
+master-357,2016,Viperine,Studies at Farleigh Dickinson with Birnstorck
+master-358,2016,Anneliese,Re-reads Gray Notebooks
+master-359,2016,Dr. Maria-Kristiina Tank,Grad students Tüüne-Kristin and Joonataun
+master-360,2016,Sirje Kukk,"Quits, goes home, switches to history of science"
+master-361,2016,Stepánka,Moved back home
+master-362,2017,Samuel,Adela's friends come to dinner
+master-363,2017,Adela,"First trip back, stayed 2 months"
+master-364,2017,Rosie,Joe moves out (late in the year)
+master-365,2017,Anneliese,"Reads long, complex books, writes index"
+master-366,2017,Dr. Maria-Kristiina Tank,Divorces Leksik
+master-367,2017,Sirje Kukk,"PhD candidate, History of Science, Tallinn University"
+master-368,2017,Stepánka,Married Eduardo
+master-369,2018 January,Samuel,Last meeting with Alec
+master-370,2018 January,Adela,"Second trip back, stayed 3 months"
+master-371,2018 January,Alec,Last meeting with Samuel
+master-372,2018 January,Viperine,Specializes in bacterial parasitism
+master-373,2018 January,Vipesh,(Applies to PhD program in Guelph)
+master-374,2018 January,Anneliese,Goes to Abruzzo and gets a rash
+master-375,2018 January,Owole,Develops stereotypical walk
+master-376,2018 January,Ekaterina),"Divorces Ctik, moves back to her mother's house"
+master-377,2018 February,Samuel,"Last time Samuel sees Tee, in Toronto"
+master-378,2018 February,Catherine,Catherine's arthritis begins to show (she limps)
+master-379,2018 February,Anneliese,Her dog is Teddi
+master-380,2018 February,Paul,Walks his uncle to the Ruheplatz
+master-381,2018 February,Luzia,Thinking of law school
+master-382,2018 March,Catherine,Chris's cancer diagnosed
+master-383,2018 March,Vipesh,(Is rejected by PhD program)
+master-384,2018 March,Ekaterina),"Ctik gets a job in Prešov, in the Nemocnica"
+master-385,2018 March,Jan,Talks to Samuel about hacking books
+master-386,2018 March,Stepánka,Son Anthony Argus born
+master-387,2019 March,Catherine,Sheila in court to annul adoption
+master-388,2019 March,Vipesh,(Makes plans to move to Guelph to intern)
+master-389,2019 March,Dr. Maria-Kristiina Tank,Named Director of Tallinn Zoo
+master-390,2019 May,Samuel,Meets Billy
+master-391,2019 May,Adela,Moves to Slovakia; works for Zdenko Cervenák
+master-392,2019 May,Rosie,Rosie looks at Samuel in the monthly meeting
+master-393,2019 May,Jaagup,Reet dies
+master-394,2019 August,Samuel,Last time he uses the large microscope
+master-395,2019 August,Adela,Meets Abroz
+master-396,2019 August,Catherine,(Zoo committee formed and advertised)
+master-397,2019 August,Rosie,Rosie looks at Samuel in the monthly meeting
+master-398,2019 August,Stuart Zachery,Stuart Zachery writing poetry
+master-399,2019 August,Viperine,"(Sees the ad, makes plans to go to Guelph to intern)"
+master-400,2019 August,Vipesh,Moves to Guelph
+master-401,2019 August,Anneliese,"Conference, Penrose yells at her"
+master-402,2019 August,Paul,Stops going for walks with his uncle
+master-403,2019 September,Samuel,Adela leaves for Bratislava
+master-404,2019 September,Adela,"Calls, says she needs another two months"
+master-405,2019 September,Rosie,Joe moves back in
+master-406,2019 September,Viperine,Arrives in Guelph
+master-407,2019 September,Luzia,Luzia goes to law school
+master-408,2019 October,Paul,Walks his uncle just to the playground
+master-409,"2019 October 9, Wednesday",Samuel,Remembers walking down Lorck (1  3)
+master-410,"2019 October 14, Monday",Samuel,Talks to Rosie.
+master-411,"2019 October 14, Monday",Rosie,Talks to Samuel
+master-412,"2019 October 23, Wednesday",Samuel,"First lab (not described)  (Writes Book 1, Part One)"
+master-413,"2019 October 23, Wednesday",Catherine,"Meets Viperine, reads her application, lunch with Samuel"
+master-414,"2019 October 23, Wednesday",Rosie,Dinner at Mikuya with Samuel
+master-415,"2019 October 23, Wednesday",Viperine,Meets Catherine
+master-416,"2019 October 23, Wednesday",Jan,Talks to Samuel about hacking books
+master-417,"2019 November 6, Wednesday",Samuel,"Second lab  Lunch with C., dinner at Mikuya with Rosie"
+master-418,"2019 November 6, Wednesday",Viperine,"Meets Samuel, joins lab"
+master-419,"2019 November 20, Wednesday",Samuel,Third lab (not mentioned). (S. is put on the zoo committee)
+master-420,"2019 November 20, Wednesday",Catherine,(Puts S. on the zoo committee)
+master-421,"2019 November 20, Wednesday",Marvin,Marvin's wife attacks him (after 15 years together)
+master-422,"2019 December 4, Wednesday",Samuel,Fourth lab (Not described.)
+master-423,"2019 December 4, Wednesday",Hans Raaflaub,"Goes to school, playing field, Ruheplatz"
+master-424,"2019 December 14, Saturday",Samuel,Dinner at Saigon with Rosie.
+master-425,"2019 December 14, Saturday",Rosie,Dinner with Samuel at Saigon
+master-426,"2019 December 18, Wednesday",Samuel,Last lab.
+master-427,"2019 December 18, Wednesday",Catherine,"(Sheila calls, no forwarding address)"
+master-428,2020 January,Samuel,"First zoo visit (mentioned in 1 12, and 3 1)"
+master-429,2020 January,Catherine,Chris in St. Marks'
+master-430,"2020 January 31, Friday",Samuel,1st weekend with Rosie at Oustic
+master-431,"2020 January 31, Friday",Rosie,1st weekend with Samuel at Oustic
+master-432,"2020 January 31, Friday",Viperine,Assembles first readings with Vipesh
+master-433,"2020 January 31, Friday",Hans Raaflaub,Gets lost on his walk
+master-434,"2020 February 5, Wednesday",Samuel,First meeting with Anneliese
+master-435,"2020 February 5, Wednesday",Adela,Last call to Adela before April (Book 3 11)
+master-436,"2020 February 5, Wednesday",Anneliese,"First meeting with S., in Frankfurt for lawsuit"
+master-437,"2020 February 5, Wednesday",Paul,Meeting with Samuel
+master-438,2020 February 6,Samuel,Zoo 2
+master-439,2020 February 6,Luzia,Luzia in Uganda
+master-440,2020 February 6,Sirje Kukk,Meets Samuel
+master-441,2020 February 8,Samuel,Readings 1 Zoo 3
+master-442,2020 February 8,Pekka Stserispaa,Hosts Samuel (age 44)
+master-443,"2020 February 11, Tuesday",Samuel,Readings 2
+master-444,"2020 February 11, Tuesday",Viperine,S. is surprised V. is still around (lab is over)
+master-445,2020 February 14,Samuel,2nd weekend with Rosie at Oustic
+master-446,2020 February 14,Rosie,2nd weekend with Rosie at Oustic
+master-447,"2020 February 19, Wednesday",Samuel,"Zoo 4, A. calls in the evening"
+master-448,2020 February 20,Samuel,Anneliese calls in the morning when S. is leaving
+master-449,2020 February 20,Anneliese,Second talk with S (on the phone)
+master-450,2020 February 20,Paul,Paul goes to Dunkelsport with Luzia
+master-451,"2020 February 22, Saturday",Anneliese,Third talk with S (on the phone)
+master-452,2020 February 28,Samuel,3rd weekend with Rosie at Oustic
+master-453,2020 February 28,Rosie,3rd weekend with Rosie at Oustic
+master-454,"2020 March 1, Sunday",Samuel,"In the lab, with universal stage"
+master-455,2020 March 2,Viperine,"Tells Samuel about her mother, and Mulu"
+master-456,"2020 March 7, Saturday",Samuel,Lunch with C.; she is retiring in June
+master-457,"2020 March 7, Saturday",Catherine,Tells Samuel she's retiring in June
+master-458,"2020 March 7, Saturday",Anneliese,Walk to the Ruheplatz
+master-459,"2020 March 7, Saturday",Paul,Walk to the Ruheplatz
+master-460,2020 March 8,Samuel,"Finishes writing Book 1, 11-end"
+master-461,"2020 March 21, Saturday",Samuel,"Readings 3, parts 1-3"
+master-462,"2020 March 21, Saturday",Viperine,Going to U. of Guelph; Mulu in the summer
+master-463,"2020 March 22, Sunday",Samuel,Zoo 5
+master-464,"2020 March 22, Sunday",John Preteen,Hosts Samuel (age 36)
+master-465,"2020 March 22, Sunday",Marvin,Samuel sees Marvin
+master-466,"2020 March 27, Friday",Anneliese,Conference in Montreal. Penrose yells at her again.
+master-467,"2020 March 28, Saturday",Samuel,Fourth talk with Anneliese
+master-468,"2020 March 28, Saturday",Catherine,Comes to lunch to repudiate A.
+master-469,"2020 March 28, Saturday",Anneliese,Fourth talk with S
+master-470,"2020 April 9, Thursday",Samuel,Fifth talk with Anneliese
+master-471,"2020 April 9, Thursday",Anneliese,Fifth talk with S (on the phone)
+master-472,"2020 April 11, Saturday",Samuel,Zoo 6.
+master-473,"2020 April 12, Sunday",Samuel,Sixth talk with Anneliese
+master-474,"2020 April 12, Sunday",Anneliese,Sixth talk with S. A. has 100 pp. remaining to write
+master-475,"2020 April 12, Sunday",Hans Raaflaub,"Getting worse, screams for a minute straight"
+master-476,"2020 April 18, Saturday",Samuel,Seventh talk with Anneliese (she calls)
+master-477,"2020 April 18, Saturday",Anneliese,Last talk with S. She is writing the preface.
+master-478,"2020 April 18, Saturday",Luzia,"Not happy in law school, not sleeping or eating"
+master-479,"2020 April 22, Wednesday",Samuel,(The night Samuel finally burns)
+master-480,"2020 April 23, Thursday",Samuel,Samuel quits
+master-481,"2020 April 23, Thursday",Catherine,Repudiates S. Says her partner is in St. Mark's
+master-482,2020 May 2,Samuel,Asks C what is wrong with Paul
+master-483,2020 May 2,Luzia,"Quits law school, goes to Lausanne to help Mila"
+master-484,2020 May 4,Samuel,Anneliese dies (67 years old)
+master-485,2020 May 4,Anneliese,Anneliese dies (67 years old)
+master-486,2020 May 4,Luzia,Goes to Basel on weekends to help Paul and Hans
+master-487,2020 May 21,Samuel,"Calls Paul, hears A. has died"
+master-488,2020 May 22,Samuel,Writes Paul
+master-489,2020 May 22,Catherine,Chris dies in St. Mark's (4 2) She can't contact Sheila
+master-490,"2020 June 7, Sunday",Samuel,"A's notebooks, letter returned, leaves lab"
+master-491,"2020 June 7, Sunday",Catherine,"Retires to Orange Grove, Texas"
+master-492,"2020 June 7, Sunday",Hans Raaflaub,(Disappeared.)
+master-493,"2020 June 7, Sunday",Paul,(Disappeared.)
+master-494,"2020 June 7, Sunday",Luzia,(Disappeared.)
+master-495,2020 June 8,Samuel,Drives north
+master-496,2020 June 28,Samuel,S. leaves Guelph. Visits Fina
+master-497,2020 June 28,François Aucoin,Dies of cancer (4 1)
+master-498,2020 June 28,Gunngeir Margeirsson,Moves to El Paso (he is 8)
+master-499,2020 July,Samuel,"Writes jalousies in Book 1, chapters 11-end"
+master-500,2020 July,Catherine,July 15: board would sit to end S's job (Book 3  11)
+master-501,2020 August,Samuel,Last visit to Watkins Glen
+master-502,2020 September,Rosie,"Quits the Water Department, moves to Oustic"
+master-503,2020 September,Viperine,Sends a telegram to Samuel in Mulu
+master-504,"2021 Monday, October 12",Samuel,Return to G. to close apartment; Rosie has gone
+master-505,2021,Samuel,S disappears. He's 50.
+master-506,2021,Adela,Maries Ambroz (she is 42)
+master-507,2021,Ambroz Tóth,Marries Adela (he is 48)
+master-508,2021,Hans-Myrl,Dies (93 years old)
+master-509,2022,Samuel,"Writes Books 2 and 3, and their Prefaces."
+master-510,2022,Vipesh,Works for Ai Genetics in Mississauga
+master-511,2022,Hans Raaflaub,"Paul's uncle dies, age 86"
+master-512,2022,Pekka Stserispaa,Abruptly leaves zoo (4 6)
+master-513,2022,Sirje Kukk,Graduates. Thesis mentioned in 4 2
+master-514,2023 October 12,Samuel,Writes Book 4 and its Preface. Books go into storage.
+master-515,2023 October 12,Vipesh,"Marries Betty Saitong (he is 33, she is 29)"
+master-516,2023 October 12,Dr. Maria-Kristiina Tank,Stops teaching at Tartu Ülikool (too time-consuming)
+master-517,2024,Samuel,"(""Blackout years,"" 2024–2061)"
+master-518,2024,Sirje Kukk,Swedish Åbo Akademi University in Finland
+master-519,2024,Owole,Stephanie Allmar moves to San Diego; Owole medicated
+master-520,2024,Adela's mother,Marries Dalibor Rudolf Firkušný (67 years old)
+master-521,2024,"Agathe, Ted",Citizen of the Year
+master-522,2029,Paul,"Paul dies, age 69  (4 4)"
+master-523,2029,Owole,Sister dies. Moved to new pen
+master-524,2029,Maschinka,Marries
+master-525,2029,"Agathe, Ted",Ted dies
+master-526,2031,Samuel,(Makes up with Fina: not in the book)
+master-527,2031,Adela,Adela dies; Maschinka writes to Samuel
+master-528,2031,Dr. Maria-Kristiina Tank,"Retires from the zoo, moves back to Saue"
+master-529,2031,Pekka Stserispaa,Begins spray-painting churches in Maine
+master-530,2031,Sirje Kukk,"Moves to Kolmården Zoo, Sweden"
+master-531,2031,Marvin,"Marvin dies (30 years old, 22 years alone)"
+master-532,2031,Adela's mother,"Dalibor dies (she is 74, he is 81)"
+master-533,2031,Maschinka,Writes Samuel about Adela's death. 1st daughter Eva
+master-534,2031,"Agathe, Ted",Agathe dies (62 years old)
+master-535,2031,Gunngeir Margeirsson,Dies in El Paso (19 years old)
+master-536,2042,Catherine,Dies (age 89)
+master-537,2042,Dr. Maria-Kristiina Tank,Son dies of aspiration
+master-538,2042,Ambroz Tóth,Dies (he is 69)
+master-539,2049,Samuel,"Box moved to lighted storage (3 Note ""This Book"")"
+master-540,2049,Pekka Stserispaa,Court proceedings in Maine (4 6)
+master-541,2049,Owole,Owole dies (36 years old)
+master-542,2049,Maschinka,Writes Samuel about Stepanka's death (M. is 47)
+master-543,2049,Stepánka,Dies (50 years old)
+master-544,2050,Rosie,Retires
+master-545,2050,Sirje Kukk,Retires (62 years old)
+master-546,2055,Pekka Stserispaa,Dies (4 6) (79 years old)
+master-547,2055,Adela's mother,Dies (98 years old)
+master-548,2057,Vipesh,Dies of myocardial infarction
+master-549,2059,Rosie,Dies (71 years old).
+master-550,2059,John Preteen,Dies (75 years old)
+master-551,2059,Dr. Maria-Kristiina Tank,Dies of zoonotic leptospirosis.
+master-552,2059,Sirje Kukk,"Died ""just a few years ago"""
+master-553,"(Indeterminate year, between 2021 and 2061)",Alec,Alec dies in a farm accident. Samuel visits Karen twice.
+master-554,"(Indeterminate year, between 2021 and 2061)",Stuart Zachery,"Mentioned in Rosie's obituary, c. 2059. Would be 50."
+master-555,"(Indeterminate year, between 2021 and 2061)",Albert,"Not mentioned in Rosie's obituary, and so assumed dead"
+master-556,"(Indeterminate year, between 2021 and 2061)",Viperine,(Disappeared.)
+master-557,"(Indeterminate year, between 2021 and 2061)",Ekaterina),(Disappeared.)
+master-558,"(Indeterminate year, between 2021 and 2061)",Jan,(Disappeared.)
+master-559,"(Indeterminate year, between 2021 and 2061)",Maschinka,(Disappeared.)
+master-560,2061 May,Samuel,"Finds the books (1 2 n. 7, 1 8 n. 2; 2 n. 11; 3 ""This Book"")"
+master-561,2061 June,Samuel,"Writes notes in Book 1, has syncope"
+master-562,2061 July,Samuel,"Writes notes in Book 2, second syncope"
+master-563,2061 September,Samuel,"Writes notes in Book 3, moves out"
+master-564,2061 October,Samuel,Writes 12 Variations for Book 4
+master-565,2062 January,Samuel,Writes Book 5

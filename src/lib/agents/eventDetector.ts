@@ -80,7 +80,7 @@ Each message to you will be a chunk of text from the novel. There will be NO add
     // Only add master events section if enabled
     if (this.masterEventsEnabled && this.masterEvents.length > 0) {
       const eventsList = this.masterEvents
-        .map((event) => `- ${event.id}: ${event.description} (${event.category})`)
+        .map((event) => `- ${event.id}: ${event.date} - ${event.event} (happened to character: ${event.character})`)
         .join("\n");
 
       prompt += `
@@ -101,7 +101,7 @@ YOUR TASK:
     // Only mention spreadsheet ID if master events are enabled
     if (this.masterEventsEnabled) {
       prompt += `
-   - Master spreadsheet ID if it matches a known type`;
+   - Master spreadsheet ID if it matches a known master event`;
     }
 
     prompt += `
