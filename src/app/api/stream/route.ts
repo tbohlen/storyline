@@ -1,18 +1,19 @@
 import { NextRequest } from 'next/server';
 import { loggers } from '@/lib/utils/logger';
-import type { UIMessage } from 'ai';
+import type { UIMessageChunk } from 'ai';
 import {
   orchestratorEvents,
   addConnection,
   removeConnection,
 } from '@/lib/services/sse-emitter';
-import { readMessages } from '@/lib/services/message-store';
+import { readChunks } from '@/lib/services/message-store';
 
 const logger = loggers.api;
 
 /**
  * GET /api/stream?filename=xyz
- * Creates an SSE connection for streaming orchestrator messages for a specific file
+ * Creates an SSE connection for streaming UIMessageChunks for a specific file.
+ * On connect, replays all persisted chunks so the client can reconstruct state.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -34,53 +35,29 @@ export async function GET(request: NextRequest) {
       // Add this controller to the connections map
       addConnection(filename, controller);
 
-      // Send initial connection message (AI SDK Message format)
-      const initialMessage: UIMessage = {
-        id: crypto.randomUUID(),
-        role: "system",
-        parts: [
-          {
-            type: "text",
-            text: `Connected to stream for ${filename}`,
-          },
-        ],
-        metadata: { filename, createdAt: new Date() },
-      };
-
-      try {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(initialMessage)}\n\n`)
-        );
-      } catch (error) {
-        logger.error({ filename, error }, 'Failed to send initial SSE message');
-      }
-
-      // Replay historical messages so the observer appears stateful on reconnect.
-      // This must complete before registering the live listener to ensure messages
+      // Replay historical chunks so the observer appears stateful on reconnect.
+      // This must complete before registering the live listener to ensure chunks
       // arrive in order — replayed history first, then live events from this point on.
-      const pastMessages = await readMessages(filename);
-      logger.info({ filename, count: pastMessages.length }, 'Replaying historical messages');
-      for (const msg of pastMessages) {
+      const pastChunks = await readChunks(filename);
+      logger.info({ filename, count: pastChunks.length }, 'Replaying historical chunks');
+      for (const chunk of pastChunks) {
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
         } catch (error) {
-          logger.error({ filename, error }, 'Failed to replay historical SSE message');
+          logger.error({ filename, error }, 'Failed to replay historical SSE chunk');
           return; // Stream already closed — bail before registering live listener
         }
       }
 
       // Listen for orchestrator events for this filename
-      const removeListener = orchestratorEvents.addListener(filename, (message) => {
+      const removeListener = orchestratorEvents.addListener(filename, (chunk: UIMessageChunk) => {
         try {
-          // Message is already in AI SDK format - just send it
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(message)}\n\n`)
+            encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`)
           );
-
-          logger.debug({ filename, role: message.role }, 'SSE message sent');
+          logger.debug({ filename, chunkType: chunk.type }, 'SSE chunk sent');
         } catch (error) {
-          logger.error({ filename, error }, 'Failed to send SSE message');
-          // If stream is closed, clean up
+          logger.error({ filename, error }, 'Failed to send SSE chunk');
           cleanup();
         }
       });
@@ -88,13 +65,8 @@ export async function GET(request: NextRequest) {
       // Cleanup function
       const cleanup = () => {
         logger.info({ filename }, 'SSE stream cleanup');
-
-        // Remove from connections map
         removeConnection(filename, controller);
-
-        // Remove event listener
         removeListener();
-
         try {
           controller.close();
         } catch (error) {
@@ -105,16 +77,10 @@ export async function GET(request: NextRequest) {
       // Set up cleanup on stream abort
       request.signal.addEventListener('abort', cleanup);
 
-      // Keep-alive ping every 30 seconds
+      // Keep-alive via SSE comment line — not stored or parsed by the client
       const keepAlive = setInterval(() => {
         try {
-          const pingMessage: UIMessage = {
-            id: crypto.randomUUID(),
-            role: "system",
-            parts: [{ type: "text", text: "Keep-alive ping" }],
-            metadata: { filename, originalType: "ping", createdAt: new Date() },
-          };
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(pingMessage)}\n\n`));
+          controller.enqueue(encoder.encode(': keep-alive\n\n'));
         } catch (error) {
           clearInterval(keepAlive);
           cleanup();
