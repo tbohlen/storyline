@@ -78,41 +78,28 @@ export function GraphVisualization({ filename, className }: GraphVisualizationPr
     );
 
     eventSource.onmessage = (event) => {
+      // Skip SSE comment lines (keep-alive); these never reach onmessage
+      // but guard defensively anyway.
+      if (!event.data || event.data.startsWith(':')) return;
+
       try {
-        const message = JSON.parse(event.data);
+        const chunk = JSON.parse(event.data);
 
-        // Check if message has parts (UIMessage format)
-        if (message.parts && Array.isArray(message.parts)) {
-          for (const part of message.parts) {
-            // Refresh graph when events or relationships are created
-            if (
-              part.type === 'tool-create_event' &&
-              part.state === 'output-available'
-            ) {
-              fetchGraphData();
-              break;
-            }
+        // Refresh graph when a new event or relationship has been persisted
+        if (chunk.type === 'data-graph-refresh') {
+          fetchGraphData();
+          return;
+        }
 
-            if (
-              part.type === 'tool-create_relationship' &&
-              part.state === 'output-available'
-            ) {
-              fetchGraphData();
-              break;
-            }
-
-            // Refresh when processing completes
-            if (
-              part.type === 'data-status' &&
-              part.data?.status === 'completed'
-            ) {
-              fetchGraphData();
-              break;
-            }
-          }
+        // Refresh when the full analysis completes
+        if (
+          chunk.type === 'data-status' &&
+          chunk.data?.status === 'completed'
+        ) {
+          fetchGraphData();
         }
       } catch (error) {
-        console.error('Failed to parse SSE message:', error);
+        console.error('Failed to parse SSE chunk:', error);
       }
     };
 
