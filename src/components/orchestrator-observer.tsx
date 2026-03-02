@@ -17,11 +17,10 @@ import {
   ReasoningTrigger,
   ReasoningContent
 } from '@/components/ai-elements/reasoning';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StorylineMessagePart } from '@/lib/utils/message-helpers';
-import truncate from '@/lib/utils/truncate';
 
 interface OrchestratorObserverProps {
   filename: string;
