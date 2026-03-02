@@ -2,7 +2,6 @@
 
 import { useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertTriangle, Network } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -123,23 +122,21 @@ export function GraphVisualization({ filename, className }: GraphVisualizationPr
   }, [fetchGraphData, filename]);
 
   return (
-    <Card className={cn('h-full flex flex-col', className)}>
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Network className="h-5 w-5" />
-            <CardTitle className="text-lg">Event Timeline Graph</CardTitle>
-          </div>
-          {graphData && (
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline">{graphData.metadata.nodeCount} nodes</Badge>
-              <Badge variant="outline">{graphData.metadata.edgeCount} edges</Badge>
-            </div>
-          )}
+    <div className={cn('h-full flex flex-col', className)}>
+      <div className="px-4 py-3 flex items-center justify-between border-b border-border">
+        <div className="flex items-center space-x-2">
+          <Network className="h-5 w-5" />
+          <span className="text-lg font-semibold">Event Timeline Graph</span>
         </div>
-      </CardHeader>
+        {graphData && (
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline">{graphData.metadata.nodeCount} nodes</Badge>
+            <Badge variant="outline">{graphData.metadata.edgeCount} edges</Badge>
+          </div>
+        )}
+      </div>
 
-      <CardContent className="flex-1 overflow-hidden p-0 relative">
+      <div className="flex-1 overflow-hidden relative">
         {loading && (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -191,7 +188,7 @@ export function GraphVisualization({ filename, className }: GraphVisualizationPr
             )}
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

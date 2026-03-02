@@ -17,7 +17,6 @@ import {
   ReasoningTrigger,
   ReasoningContent
 } from '@/components/ai-elements/reasoning';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StorylineMessagePart } from '@/lib/utils/message-helpers';
@@ -88,13 +87,11 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
   }, [filename]);
 
   return (
-    <Card className={cn("h-full flex flex-col", className)}>
-      <CardHeader>
-        <div className="flex items-center justify-between max-w-full gap-8 overflow-hidden">
-          <CardTitle className="text-sm text-ellipsis whitespace-nowrap shrink overflow-hidden">{filename}</CardTitle>
-          <ConnectionStatusBadge status={connectionStatus} />
-        </div>
-      </CardHeader>
+    <div className={cn("h-full flex flex-col bg-muted/40", className)}>
+      <div className="px-4 py-3 flex items-center justify-between gap-8 overflow-hidden border-b border-border">
+        <span className="text-lg font-medium text-ellipsis whitespace-nowrap shrink overflow-hidden">Chat {filename}</span>
+        <ConnectionStatusBadge status={connectionStatus} />
+      </div>
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950 dark:border-red-800">
@@ -119,7 +116,7 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
-    </Card>
+    </div>
   );
 }
 
