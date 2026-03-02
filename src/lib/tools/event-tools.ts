@@ -1,9 +1,10 @@
 /**
- * Individual AI SDK tools for event detection and relationship creation
- * These tools are used by the event detector agent to interact with the database
+ * Individual AI SDK tools for event detection and relationship creation.
+ * These tools are used by the event detector and timeline resolver agents
+ * to interact with the database.
  */
 
-import type { UIMessage } from 'ai';
+import type { UIMessageChunk } from 'ai';
 import { tool } from 'ai';
 import { z } from 'zod';
 import {
@@ -14,11 +15,6 @@ import {
   getAllEvents,
 } from '../db/events';
 import { loggers } from '../utils/logger';
-import {
-  createStatusMessage,
-  createToolCallMessage,
-  createToolResultMessage,
-} from '../utils/message-helpers';
 
 const logger = loggers.database;
 
@@ -204,20 +200,17 @@ export type GetRecentEventsOutput = z.infer<typeof getRecentEventsOutputSchema>;
 export type FindMasterEventInput = z.infer<typeof findMasterEventInputSchema>;
 export type FindMasterEventOutput = z.infer<typeof findMasterEventOutputSchema>;
 
-// Legacy type alias for backwards compatibility
-type CreateEventParams = CreateEventInput;
-
 /**
- * Context passed to all event tools
- * Provides access to shared state and functions during event detection
+ * Context passed to all event tools.
+ * Provides access to shared state and functions during event detection.
  */
 export interface EventToolContext {
   /** Starting position of the current chunk in the full novel */
   globalStartPosition: number;
   /** Name of the novel being processed */
   novelName: string;
-  /** Function to emit messages to SSE stream */
-  emitMessage: (message: UIMessage) => void;
+  /** Function to emit a UIMessageChunk to the SSE stream */
+  emitChunk: (chunk: UIMessageChunk) => void;
   /** Whether master events spreadsheet is enabled */
   masterEventsEnabled: boolean;
   /** Master events data from spreadsheet (if enabled) */
@@ -225,8 +218,8 @@ export interface EventToolContext {
 }
 
 /**
- * Creates the create_event tool
- * Allows the agent to create a new event node in the database
+ * Creates the create_event tool.
+ * Allows the agent to create a new event node in the database.
  */
 function createEventTool(context: EventToolContext) {
   return tool({
@@ -247,18 +240,7 @@ Do NOT create events for:
       ? createEventInputSchemaWithSpreadsheetId
       : createEventInputSchema,
 
-    execute: async (params: CreateEventInput, { toolCallId }: { toolCallId: string }) => {
-      context.emitMessage(
-        createToolCallMessage(
-          'assistant',
-          'database',
-          toolCallId,
-          'create_event',
-          params as Record<string, unknown>,
-          context.novelName
-        )
-      );
-
+    execute: async (params: CreateEventInput) => {
       try {
         // Validate character ranges
         if (
@@ -296,40 +278,16 @@ Do NOT create events for:
           absoluteDate: params.absoluteDate,
         });
 
-        const result = {
+        // Notify the frontend that the graph has new data to display
+        context.emitChunk({ type: 'data-graph-refresh', data: {} });
+
+        return {
           success: true,
           eventId,
           message: `Event created successfully with ID: ${eventId}`,
         };
-
-        context.emitMessage(
-          createToolResultMessage(
-            'assistant',
-            'database',
-            toolCallId,
-            'create_event',
-            params as Record<string, unknown>,
-            result,
-            context.novelName
-          )
-        );
-
-        return result;
       } catch (error) {
         logger.error({ error, params }, "Failed to create event");
-        context.emitMessage(
-          createStatusMessage(
-            'assistant',
-            'database',
-            'error',
-            "Failed to create event",
-            {
-              tool: "create_event",
-              error: String(error),
-            },
-            context.novelName
-          )
-        );
         throw error;
       }
     },
@@ -337,8 +295,8 @@ Do NOT create events for:
 }
 
 /**
- * Creates the create_relationship tool
- * Allows the agent to establish temporal relationships between events
+ * Creates the create_relationship tool.
+ * Allows the agent to establish temporal relationships between events.
  */
 function createRelationshipTool(context: EventToolContext) {
   return tool({
@@ -359,18 +317,7 @@ Guidelines:
 
     inputSchema: createRelationshipInputSchema,
 
-    execute: async (params: CreateRelationshipInput, { toolCallId }: { toolCallId: string }) => {
-      context.emitMessage(
-        createToolCallMessage(
-          'assistant',
-          'database',
-          toolCallId,
-          'create_relationship',
-          params as Record<string, unknown>,
-          context.novelName
-        )
-      );
-
+    execute: async (params: CreateRelationshipInput) => {
       try {
         await createRelationship(
           params.fromEventId,
@@ -379,39 +326,15 @@ Guidelines:
           params.sourceText
         );
 
-        const result = {
+        // Notify the frontend that the graph has new data to display
+        context.emitChunk({ type: 'data-graph-refresh', data: {} });
+
+        return {
           success: true,
           message: `Created ${params.relationshipType} relationship from ${params.fromEventId} to ${params.toEventId}`,
         };
-
-        context.emitMessage(
-          createToolResultMessage(
-            'assistant',
-            'database',
-            toolCallId,
-            'create_relationship',
-            params as Record<string, unknown>,
-            result,
-            context.novelName
-          )
-        );
-
-        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to create relationship');
-        context.emitMessage(
-          createStatusMessage(
-            'assistant',
-            'database',
-            'error',
-            'Failed to create relationship',
-            {
-              tool: 'create_relationship',
-              error: String(error),
-            },
-            context.novelName
-          )
-        );
         throw error;
       }
     },
@@ -419,8 +342,8 @@ Guidelines:
 }
 
 /**
- * Creates the find_event tool
- * Allows the agent to search for existing events in the database
+ * Creates the find_event tool.
+ * Allows the agent to search for existing events in the database.
  */
 function findEventTool(context: EventToolContext) {
   return tool({
@@ -433,18 +356,7 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
 
     inputSchema: findEventInputSchema,
 
-    execute: async (params: FindEventInput, { toolCallId }: { toolCallId: string }) => {
-      context.emitMessage(
-        createToolCallMessage(
-          'assistant',
-          'database',
-          toolCallId,
-          'find_event',
-          params as Record<string, unknown>,
-          context.novelName
-        )
-      );
-
+    execute: async (params: FindEventInput) => {
       try {
         // Note: charRangeStart/End are already global positions when searching
         const event = await findExistingEvent({
@@ -454,7 +366,7 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
           charRangeEnd: params.charRangeEnd,
         });
 
-        const result = event
+        return event
           ? {
               found: true as const,
               event: {
@@ -471,35 +383,8 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
               found: false as const,
               message: 'No matching event found',
             };
-
-        context.emitMessage(
-          createToolResultMessage(
-            'assistant',
-            'database',
-            toolCallId,
-            'find_event',
-            params as Record<string, unknown>,
-            result,
-            context.novelName
-          )
-        );
-
-        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to find event');
-        context.emitMessage(
-          createStatusMessage(
-            'assistant',
-            'database',
-            'error',
-            'Failed to find event',
-            {
-              tool: 'find_event',
-              error: String(error),
-            },
-            context.novelName
-          )
-        );
         throw error;
       }
     },
@@ -507,8 +392,8 @@ Provide at least one search criterion (quote, charRangeStart, or charRangeEnd).`
 }
 
 /**
- * Creates the update_event tool
- * Allows the agent to modify properties of an existing event
+ * Creates the update_event tool.
+ * Allows the agent to modify properties of an existing event.
  */
 function updateEventTool(context: EventToolContext) {
   return tool({
@@ -516,56 +401,18 @@ function updateEventTool(context: EventToolContext) {
 
     inputSchema: updateEventInputSchema,
 
-    execute: async (params: UpdateEventInput, { toolCallId }: { toolCallId: string }) => {
+    execute: async (params: UpdateEventInput) => {
       const { eventId, ...updates } = params;
-
-      context.emitMessage(
-        createToolCallMessage(
-          'assistant',
-          'database',
-          toolCallId,
-          'update_event',
-          params as Record<string, unknown>,
-          context.novelName
-        )
-      );
 
       try {
         await updateEventNode(eventId, updates);
 
-        const result = {
+        return {
           success: true,
           message: `Event ${eventId} updated successfully`,
         };
-
-        context.emitMessage(
-          createToolResultMessage(
-            'assistant',
-            'database',
-            toolCallId,
-            'update_event',
-            params as Record<string, unknown>,
-            result,
-            context.novelName
-          )
-        );
-
-        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to update event');
-        context.emitMessage(
-          createStatusMessage(
-            'assistant',
-            'database',
-            'error',
-            'Failed to update event',
-            {
-              tool: 'update_event',
-              error: String(error),
-            },
-            context.novelName
-          )
-        );
         throw error;
       }
     },
@@ -573,8 +420,8 @@ function updateEventTool(context: EventToolContext) {
 }
 
 /**
- * Creates the get_recent_events tool
- * Allows the agent to fetch events from earlier in the novel for cross-chunk relationship creation
+ * Creates the get_recent_events tool.
+ * Allows the agent to fetch events from earlier in the novel for cross-chunk relationship creation.
  */
 function getRecentEventsTool(context: EventToolContext) {
   return tool({
@@ -584,19 +431,8 @@ For example, if the current text says "the next day after the party" and you cre
 
     inputSchema: getRecentEventsInputSchema,
 
-    execute: async (params: GetRecentEventsInput, { toolCallId }: { toolCallId: string }) => {
+    execute: async (params: GetRecentEventsInput) => {
       const limit = Math.min(params.limit || 10, 50); // Cap at 50 to avoid overwhelming the context
-
-      context.emitMessage(
-        createToolCallMessage(
-          'assistant',
-          'database',
-          toolCallId,
-          'get_recent_events',
-          params as Record<string, unknown>,
-          context.novelName
-        )
-      );
 
       try {
         const allEvents = await getAllEvents(context.novelName);
@@ -606,7 +442,7 @@ For example, if the current text says "the next day after the party" and you cre
           .filter(e => e.charRangeEnd < context.globalStartPosition)
           .slice(-limit); // Get last N events
 
-        const result = {
+        return {
           success: true,
           events: recentEvents.map(e => ({
             id: e.id,
@@ -619,35 +455,8 @@ For example, if the current text says "the next day after the party" and you cre
           })),
           count: recentEvents.length,
         };
-
-        context.emitMessage(
-          createToolResultMessage(
-            'assistant',
-            'database',
-            toolCallId,
-            'get_recent_events',
-            params as Record<string, unknown>,
-            result,
-            context.novelName
-          )
-        );
-
-        return result;
       } catch (error) {
         logger.error({ error, params }, 'Failed to get recent events');
-        context.emitMessage(
-          createStatusMessage(
-            'assistant',
-            'database',
-            'error',
-            'Failed to get recent events',
-            {
-              tool: 'get_recent_events',
-              error: String(error),
-            },
-            context.novelName
-          )
-        );
         throw error;
       }
     },
@@ -655,8 +464,8 @@ For example, if the current text says "the next day after the party" and you cre
 }
 
 /**
- * Creates the find_master_event tool
- * Allows the agent to search the master events spreadsheet for matching event types
+ * Creates the find_master_event tool.
+ * Allows the agent to search the master events spreadsheet for matching event types.
  */
 function findMasterEventTool(context: EventToolContext) {
   return tool({
@@ -666,36 +475,13 @@ This is useful during timeline resolution when you want to categorize events by 
 
     inputSchema: findMasterEventInputSchema,
 
-    execute: async (params: FindMasterEventInput, { toolCallId }: { toolCallId: string }) => {
-      context.emitMessage(
-        createToolCallMessage(
-          'assistant',
-          'database',
-          toolCallId,
-          'find_master_event',
-          params as Record<string, unknown>,
-          context.novelName
-        )
-      );
-
+    execute: async (params: FindMasterEventInput) => {
       try {
         if (!context.masterEventsEnabled || !context.masterEvents || context.masterEvents.length === 0) {
-          const result = {
+          return {
             found: false as const,
             message: 'Master events spreadsheet is not enabled or empty',
           };
-          context.emitMessage(
-            createToolResultMessage(
-              'assistant',
-              'database',
-              toolCallId,
-              'find_master_event',
-              params as Record<string, unknown>,
-              result,
-              context.novelName
-            )
-          );
-          return result;
         }
 
         // Simple fuzzy matching: find master events that contain keywords from the description
@@ -716,55 +502,28 @@ This is useful during timeline resolution when you want to categorize events by 
           .filter(m => m.matchScore > 0.3) // At least 30% of keywords match
           .sort((a, b) => b.matchScore - a.matchScore);
 
-        const result = matches.length === 0
-          ? {
-              found: false as const,
-              message: 'No matching master event found',
-            }
-          : (() => {
-              const bestMatch = matches[0];
-              return {
-                found: true as const,
-                spreadsheetId: bestMatch.masterEvent.id,
-                description: bestMatch.masterEvent.description,
-                category: bestMatch.masterEvent.category,
-                matchConfidence: bestMatch.matchScore,
-                alternativeMatches: matches.slice(1, 3).map(m => ({
-                  spreadsheetId: m.masterEvent.id,
-                  description: m.masterEvent.description,
-                  matchConfidence: m.matchScore,
-                })),
-              };
-            })();
+        if (matches.length === 0) {
+          return {
+            found: false as const,
+            message: 'No matching master event found',
+          };
+        }
 
-        context.emitMessage(
-          createToolResultMessage(
-            'assistant',
-            'database',
-            toolCallId,
-            'find_master_event',
-            params as Record<string, unknown>,
-            result,
-            context.novelName
-          )
-        );
-
-        return result;
+        const bestMatch = matches[0];
+        return {
+          found: true as const,
+          spreadsheetId: bestMatch.masterEvent.id,
+          description: bestMatch.masterEvent.description,
+          category: bestMatch.masterEvent.category,
+          matchConfidence: bestMatch.matchScore,
+          alternativeMatches: matches.slice(1, 3).map(m => ({
+            spreadsheetId: m.masterEvent.id,
+            description: m.masterEvent.description,
+            matchConfidence: m.matchScore,
+          })),
+        };
       } catch (error) {
         logger.error({ error, params }, 'Failed to find master event');
-        context.emitMessage(
-          createStatusMessage(
-            'assistant',
-            'database',
-            'error',
-            'Failed to find master event',
-            {
-              tool: 'find_master_event',
-              error: String(error),
-            },
-            context.novelName
-          )
-        );
         throw error;
       }
     },
@@ -772,7 +531,7 @@ This is useful during timeline resolution when you want to categorize events by 
 }
 
 /**
- * Factory function that creates all event tools with the provided context
+ * Factory function that creates all event tools with the provided context.
  *
  * @param context - Event tool context containing shared state and functions
  * @returns Object containing all event tools
@@ -781,17 +540,9 @@ This is useful during timeline resolution when you want to categorize events by 
  * const tools = createEventTools({
  *   globalStartPosition: 1000,
  *   novelName: 'my-novel.docx',
- *   emitMessage: (type, agent, message, data) => { ... },
+ *   emitChunk: (chunk) => { ... },
  *   masterEventsEnabled: true,
  *   masterEvents: [...]
- * });
- *
- * // Use with AI SDK generateText
- * const result = await generateText({
- *   model,
- *   system,
- *   prompt,
- *   tools,
  * });
  */
 export function createEventTools(context: EventToolContext) {
