@@ -279,7 +279,7 @@ Do NOT create events for:
         });
 
         // Notify the frontend that the graph has new data to display
-        context.emitChunk({ type: 'data-graph-refresh', data: {} });
+        context.emitChunk({ type: 'data-graph-refresh', data: {}, transient: true });
 
         return {
           success: true,
@@ -327,7 +327,7 @@ Guidelines:
         );
 
         // Notify the frontend that the graph has new data to display
-        context.emitChunk({ type: 'data-graph-refresh', data: {} });
+        context.emitChunk({ type: 'data-graph-refresh', data: {}, transient: true });
 
         return {
           success: true,
