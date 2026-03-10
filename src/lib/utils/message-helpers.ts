@@ -90,13 +90,17 @@ export type StorylineMessagePart = UIMessagePart<StorylineData, StorylineTools>;
 export type StorylineToolPart = ToolUIPart<StorylineTools>;
 
 /**
- * Emits a status update as three UIMessageChunks (start, data-status, finish)
- * via the provided emitChunk callback.
+ * Emits a status update as a single data-status UIMessageChunk.
  *
- * Encapsulates the chunk-triplet protocol so callers don't repeat the for-loop
- * boilerplate on every status emit.
+ * Uses the AI SDK's official data-* chunk pattern. Without an `id` field,
+ * each call appends a new part to message.parts so all status messages
+ * accumulate and remain visible in the chat. No start/finish wrappers are
+ * needed — those only serve as message-boundary markers for the SDK's
+ * internal message state, and adding them here caused the message ID to
+ * change on every emit, making React remount the message component and
+ * visually "re-post" the entire history.
  *
- * @param emitChunk - Callback that forwards each chunk to the SSE stream
+ * @param emitChunk - Callback that forwards the chunk to the SSE stream
  * @param agent - The agent reporting the status
  * @param status - The status type
  * @param content - The status message text
@@ -109,8 +113,6 @@ export function emitStatusMessage(
   content: string,
   data?: Record<string, unknown>,
 ): void {
-  const messageId = crypto.randomUUID();
-  emitChunk({ type: "start", messageId });
   emitChunk({
     type: "data-status",
     data: {
@@ -120,5 +122,4 @@ export function emitStatusMessage(
       agent,
     },
   });
-  emitChunk({ type: "finish", finishReason: "stop" });
 }
