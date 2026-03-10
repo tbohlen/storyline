@@ -41,14 +41,10 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
 
   const { messages, status, error } = useChat({ transport, resume: true });
 
-  // Map useChat status to the ConnectionStatusBadge values
-  const connectionStatus = mapStatus(status, error);
-
   return (
     <div className={cn("h-full flex flex-col bg-muted/40", className)}>
       <div className="px-4 py-3 flex items-center justify-between gap-8 overflow-hidden border-b border-border">
         <span className="text-lg font-medium text-ellipsis whitespace-nowrap shrink overflow-hidden">Chat {filename}</span>
-        <ConnectionStatusBadge status={connectionStatus} />
       </div>
 
       {error && (
@@ -62,12 +58,6 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
 
       <Conversation>
         <ConversationContent>
-          {messages.length === 0 && connectionStatus === "connected" && (
-            <div className="text-center text-muted-foreground py-8">
-              <Loader2 className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
-              <p>Waiting for analysis to begin...</p>
-            </div>
-          )}
           {messages.map((message) => (
             <MessageRenderer key={message.id} message={message} />
           ))}
@@ -76,22 +66,6 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
       </Conversation>
     </div>
   );
-}
-
-/**
- * Maps useChat status (and error) to the ConnectionStatusBadge display state.
- */
-function mapStatus(
-  status: string,
-  error: Error | undefined,
-): 'connecting' | 'connected' | 'error' | 'closed' {
-  if (error) return 'error';
-  switch (status) {
-    case 'streaming': return 'connected';
-    case 'submitted': return 'connecting';
-    case 'ready':     return 'closed';
-    default:          return 'closed';
-  }
 }
 
 /**
@@ -156,47 +130,4 @@ function EventStatusRenderer({ part }: { part: DataPart }) {
       <span>{text}</span>
     </div>
   );
-}
-
-/**
- * Connection status badge
- */
-function ConnectionStatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case 'connecting':
-      return (
-        <div className="flex items-center space-x-1">
-          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-          <span className="text-sm text-muted-foreground">
-            Connecting...
-          </span>
-        </div>
-      );
-
-    case 'connected':
-      return (
-        <div className="flex items-center space-x-1">
-          <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-sm text-green-600 dark:text-green-400">Connected</span>
-        </div>
-      );
-
-    case 'error':
-      return (
-        <div className="flex items-center space-x-1">
-          <AlertTriangle className="h-4 w-4 text-red-500" />
-          <span className="text-sm text-red-600 dark:text-red-400">Connection Error</span>
-        </div>
-      );
-
-    case 'closed':
-      return (
-        <div className="flex items-center space-x-1">
-          <span className="text-sm text-muted-foreground">Disconnected</span>
-        </div>
-      );
-
-    default:
-      return null;
-  }
 }
