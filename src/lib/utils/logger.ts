@@ -15,6 +15,12 @@ export function createLogger(name: string): pino.Logger {
   const loggerConfig: pino.LoggerOptions = {
     name,
     level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
+    // Serialize both `err` (pino convention) and `error` (our convention)
+    // so Error objects log their message and stack instead of `{}`.
+    serializers: {
+      err: pino.stdSerializers.err,
+      error: pino.stdSerializers.err,
+    },
   };
 
   // In development, use pino-pretty stream (no worker threads)
