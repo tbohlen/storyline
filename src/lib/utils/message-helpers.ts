@@ -90,36 +90,35 @@ export type StorylineMessagePart = UIMessagePart<StorylineData, StorylineTools>;
 export type StorylineToolPart = ToolUIPart<StorylineTools>;
 
 /**
- * Creates the three UIMessageChunks that together represent a status update:
- * a start chunk, a data-status chunk, and a finish chunk.
+ * Emits a status update as three UIMessageChunks (start, data-status, finish)
+ * via the provided emitChunk callback.
  *
- * Agents should emit all returned chunks in order so that processUIMessageStream
- * correctly assembles them into a single UIMessage on the client.
+ * Encapsulates the chunk-triplet protocol so callers don't repeat the for-loop
+ * boilerplate on every status emit.
  *
+ * @param emitChunk - Callback that forwards each chunk to the SSE stream
  * @param agent - The agent reporting the status
  * @param status - The status type
  * @param content - The status message text
  * @param data - Optional additional data about the status
- * @returns Array of [start, data-status, finish] UIMessageChunks
  */
-export function createStatusChunks(
+export function emitStatusMessage(
+  emitChunk: (chunk: UIMessageChunk) => void,
   agent: AgentRole,
   status: EventStatusPart["status"],
   content: string,
   data?: Record<string, unknown>,
-): UIMessageChunk[] {
+): void {
   const messageId = crypto.randomUUID();
-  return [
-    { type: "start", messageId },
-    {
-      type: "data-status",
-      data: {
-        ...data,
-        status,
-        text: content,
-        agent,
-      },
+  emitChunk({ type: "start", messageId });
+  emitChunk({
+    type: "data-status",
+    data: {
+      ...data,
+      status,
+      text: content,
+      agent,
     },
-    { type: "finish", finishReason: "stop" },
-  ];
+  });
+  emitChunk({ type: "finish", finishReason: "stop" });
 }
