@@ -122,7 +122,7 @@ export class Orchestrator {
    * Emits a UIMessageChunk to the SSE stream.
    * @param {UIMessageChunk} chunk - The chunk to emit
    */
-  private emitChunk(chunk: UIMessageChunk): void {
+  private emitChunk = (chunk: UIMessageChunk): void => {
     if (emitOrchestratorChunk) {
       emitOrchestratorChunk(this.filename, chunk);
     } else {
