@@ -4,7 +4,7 @@ import type { UIMessageChunk } from "ai";
 import { createEventTools } from "../tools/event-tools";
 import { readCsv } from "../services/fileParser";
 import { loggers } from "../utils/logger";
-import { createStatusChunks } from "../utils/message-helpers";
+import { emitStatusMessage } from "../utils/message-helpers";
 
 const logger = loggers.eventDetector;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
@@ -162,14 +162,13 @@ TOOLS AVAILABLE:
       );
 
       // Emit pre-analysis status
-      for (const c of createStatusChunks(
+      emitStatusMessage(
+        this.emitChunk,
         'event-detector',
         'analyzing',
         "Starting chunk analysis",
         { chunkLength: textChunk.length, globalStartPosition }
-      )) {
-        this.emitChunk(c);
-      }
+      );
 
       // Create tools with context including emit function
       const tools = createEventTools({
@@ -238,14 +237,13 @@ TOOLS AVAILABLE:
         "Failed to analyze text chunk"
       );
 
-      for (const c of createStatusChunks(
+      emitStatusMessage(
+        this.emitChunk,
         'event-detector',
         'error',
         "Failed to analyze chunk",
         { error: String(error) }
-      )) {
-        this.emitChunk(c);
-      }
+      );
 
       throw new Error(`Failed to analyze text chunk: ${error}`);
     }

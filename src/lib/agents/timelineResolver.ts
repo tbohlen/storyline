@@ -4,7 +4,7 @@ import type { UIMessageChunk } from "ai";
 import { createEventTools } from "../tools/event-tools";
 import { EventNode, getBatchRelationships } from "../db/events";
 import { loggers } from "../utils/logger";
-import { createStatusChunks } from "../utils/message-helpers";
+import { emitStatusMessage } from "../utils/message-helpers";
 
 const logger = loggers.timeline;
 const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
@@ -170,14 +170,13 @@ Remember: Your job is to document what the text says, not to resolve contradicti
         "Analyzing event batch for timeline resolution"
       );
 
-      for (const c of createStatusChunks(
+      emitStatusMessage(
+        this.emitChunk,
         'timeline-resolver',
         'analyzing',
         `Analyzing batch of ${events.length} events`,
         { eventCount: events.length, contextLength: contextText.length }
-      )) {
-        this.emitChunk(c);
-      }
+      );
 
       // Get existing relationships for these events
       const eventIds = events.map(e => e.id);
@@ -281,14 +280,13 @@ Analyze this context and establish temporal relationships between the events. Re
         "Batch analysis complete"
       );
 
-      for (const c of createStatusChunks(
+      emitStatusMessage(
+        this.emitChunk,
         'timeline-resolver',
         'success',
         `Batch analysis complete: ${relationshipsCreated} relationships, ${datesAdded} dates, ${masterEventsLinked} master events`,
         { relationshipsCreated, datesAdded, masterEventsLinked }
-      )) {
-        this.emitChunk(c);
-      }
+      );
 
       return {
         relationshipsCreated,
@@ -298,14 +296,13 @@ Analyze this context and establish temporal relationships between the events. Re
     } catch (error) {
       logger.error({ error, eventCount: events.length }, "Failed to analyze batch");
 
-      for (const c of createStatusChunks(
+      emitStatusMessage(
+        this.emitChunk,
         'timeline-resolver',
         'error',
         `Failed to analyze batch: ${error}`,
         { error: String(error) }
-      )) {
-        this.emitChunk(c);
-      }
+      );
 
       throw new Error(`Failed to analyze batch: ${error}`);
     }
