@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useMemo } from 'react';
+import { useChat } from '@ai-sdk/react';
 import type { UIMessage, TextUIPart, ReasoningUIPart } from 'ai';
 import {
   Conversation,
@@ -20,6 +21,7 @@ import {
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StorylineMessagePart } from '@/lib/utils/message-helpers';
+import { createSSETransport } from '@/lib/transport/sse-transport';
 import ToolRenderer from './tool-renderer';
 
 interface OrchestratorObserverProps {
@@ -28,89 +30,34 @@ interface OrchestratorObserverProps {
 }
 
 /**
- * New orchestrator observer using ai-elements components
- * Displays messages from multiple agents (orchestrator, event-detector, timeline-resolver, etc.)
+ * Orchestrator observer component.
+ * Uses useChat with a custom SSE transport so the AI SDK's
+ * processUIMessageStream handles all in-place message assembly.
+ * The transport's reconnectToStream is called automatically on mount
+ * (resume: true) and replays chunk history from the server.
  */
 export function OrchestratorObserver({ filename, className }: OrchestratorObserverProps) {
-  const [messages, setMessages] = useState<UIMessage[]>([]);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error' | 'closed'>('connecting');
-  const [error, setError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const transport = useMemo(() => createSSETransport(filename), [filename]);
 
-  // SSE connection setup
-  useEffect(() => {
-    if (!filename) {
-      setError('No filename provided');
-      return;
-    }
-
-    const eventSource = new EventSource(`/api/stream?filename=${encodeURIComponent(filename)}`);
-    eventSourceRef.current = eventSource;
-
-    eventSource.onopen = () => {
-      console.log('SSE connection opened');
-      setConnectionStatus('connected');
-      setError(null);
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        console.log("Trying to parse SSE message...");
-        const message: UIMessage = JSON.parse(event.data);
-        console.log('SSE message received:', message);
-
-        // Filter out ping messages (check role or metadata)
-        if (
-          message.role !== "system" ||
-          message.parts.length > 1 ||
-          message.parts[0].type !== "text" ||
-          message.parts[0].text !== "Keep-alive ping"
-        ) {
-          setMessages((prev) => [...prev, message]);
-        }
-      } catch (error) {
-        console.error('Failed to parse SSE message:', error, event.data);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error);
-      setConnectionStatus('error');
-      setError('Connection to server lost');
-    };
-
-    // Cleanup on unmount
-    return () => {
-      console.log('Cleaning up SSE connection');
-      eventSource.close();
-      setConnectionStatus('closed');
-    };
-  }, [filename]);
+  const { messages, status, error } = useChat({ transport, resume: true });
 
   return (
     <div className={cn("h-full flex flex-col bg-muted/40", className)}>
       <div className="px-4 py-3 flex items-center justify-between gap-8 overflow-hidden border-b border-border">
         <span className="text-lg font-medium text-ellipsis whitespace-nowrap shrink overflow-hidden">Chat {filename}</span>
-        <ConnectionStatusBadge status={connectionStatus} />
       </div>
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950 dark:border-red-800">
           <div className="flex items-center">
             <AlertTriangle className="h-4 w-4 text-red-500 mr-2" />
-            <span className="text-sm text-red-700 dark:text-red-100">{error}</span>
+            <span className="text-sm text-red-700 dark:text-red-100">{error.message}</span>
           </div>
         </div>
       )}
 
       <Conversation>
         <ConversationContent>
-          {messages.length === 0 && connectionStatus === "connected" && (
-            <div className="text-center text-muted-foreground py-8">
-              <Loader2 className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
-              <p>Waiting for analysis to begin...</p>
-            </div>
-          )}
           {messages.map((message) => (
             <MessageRenderer key={message.id} message={message} />
           ))}
@@ -183,47 +130,4 @@ function EventStatusRenderer({ part }: { part: DataPart }) {
       <span>{text}</span>
     </div>
   );
-}
-
-/**
- * Connection status badge
- */
-function ConnectionStatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case 'connecting':
-      return (
-        <div className="flex items-center space-x-1">
-          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-          <span className="text-sm text-muted-foreground">
-            Connecting...
-          </span>
-        </div>
-      );
-
-    case 'connected':
-      return (
-        <div className="flex items-center space-x-1">
-          <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-sm text-green-600 dark:text-green-400">Connected</span>
-        </div>
-      );
-
-    case 'error':
-      return (
-        <div className="flex items-center space-x-1">
-          <AlertTriangle className="h-4 w-4 text-red-500" />
-          <span className="text-sm text-red-600 dark:text-red-400">Connection Error</span>
-        </div>
-      );
-
-    case 'closed':
-      return (
-        <div className="flex items-center space-x-1">
-          <span className="text-sm text-muted-foreground">Disconnected</span>
-        </div>
-      );
-
-    default:
-      return null;
-  }
 }
