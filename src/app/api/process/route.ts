@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         // Keep the orchestrator around for status queries
       })
       .catch((error) => {
-        logger.error({ filename, error }, 'Processing failed for file');
+        logger.error({ filename, err: error }, 'Processing failed for file');
         // Keep the orchestrator around so we can see the error in stats
       });
 
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.error({ error }, 'Process start error');
+    logger.error({ err: error }, 'Process start error');
 
     return NextResponse.json(
       {
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.error({ error }, 'Process status error');
+    logger.error({ err: error }, 'Process status error');
 
     return NextResponse.json(
       {
@@ -232,7 +232,7 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.error({ error }, 'Process cleanup error');
+    logger.error({ err: error }, 'Process cleanup error');
 
     return NextResponse.json(
       {
