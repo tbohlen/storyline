@@ -162,11 +162,6 @@ export class Orchestrator {
         logger.info("Event detector initialized without master events");
       }
 
-      emitStatusMessage(this.emitChunk, 'orchestrator', 'success', 'AI initialization complete', {
-        totalCharacters: this.stats.totalCharacters,
-        chunkSize: this.config.chunkSize,
-        overlapSize: this.config.overlapSize,
-      });
       logger.info("Orchestrator initialization complete");
     } catch (error) {
       const errorMessage = `Initialization failed: ${error}`;
@@ -193,11 +188,6 @@ export class Orchestrator {
       this.stats.eventsFound = 0;
       this.stats.errors = [];
 
-      emitStatusMessage(this.emitChunk, 'orchestrator', 'analyzing', `Starting novel analysis - ${this.stats.totalCharacters} characters`, {
-        totalCharacters: this.stats.totalCharacters,
-        chunkSize: this.config.chunkSize,
-        overlapSize: this.config.overlapSize,
-      });
       logger.info(
         `Starting novel processing - totalCharacters: ${this.stats.totalCharacters}, chunkSize: ${this.config.chunkSize}, overlapSize: ${this.config.overlapSize}`
       );
