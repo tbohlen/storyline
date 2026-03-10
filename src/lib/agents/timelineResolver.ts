@@ -248,15 +248,10 @@ Analyze this context and establish temporal relationships between the events. Re
         },
       });
 
-      const result = await agent.stream({ prompt });
-
-      // Stream all chunks to the SSE emitter
-      for await (const chunk of result.toUIMessageStream()) {
-        this.emitChunk(chunk);
-      }
+      const result = await agent.generate({ prompt });
 
       // Collect statistics from completed tool results
-      const toolResults = await result.toolResults;
+      const toolResults = result.toolResults;
 
       const relationshipsCreated = toolResults.filter(
         (tr) => tr && tr.toolName === "create_relationship" &&

@@ -196,15 +196,10 @@ TOOLS AVAILABLE:
         },
       });
 
-      const result = await agent.stream({ prompt: textChunk });
-
-      // Stream all chunks to the SSE emitter
-      for await (const chunk of result.toUIMessageStream()) {
-        this.emitChunk(chunk);
-      }
+      const result = await agent.generate({ prompt: textChunk });
 
       // Collect event IDs and relationship counts from completed tool results
-      const toolResults = await result.toolResults;
+      const toolResults = result.toolResults;
       const createdEventIds: string[] = [];
       let createdRelationships = 0;
 
