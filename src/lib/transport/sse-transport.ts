@@ -17,11 +17,17 @@ import type { UIMessage, UIMessageChunk, ChatTransport } from 'ai';
  * Lines beginning with "data: " are decoded as JSON UIMessageChunks.
  * The special "data: [DONE]" sentinel is treated as end-of-stream.
  *
+ * onClose is called when the stream ends for any reason (natural close, [DONE]
+ * sentinel, or consumer cancel). The caller uses this to reset connection state
+ * so future reconnect attempts are not blocked.
+ *
  * @param body - The raw byte stream from the SSE response
+ * @param onClose - Callback invoked when the stream terminates for any reason
  * @returns A ReadableStream of parsed UIMessageChunk objects
  */
 function parseSseStream(
   body: ReadableStream<Uint8Array>,
+  onClose: () => void,
 ): ReadableStream<UIMessageChunk> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -36,6 +42,7 @@ function parseSseStream(
 
         if (done) {
           controller.close();
+          onClose();
           return;
         }
 
@@ -53,6 +60,7 @@ function parseSseStream(
           // End of stream sentinel
           if (trimmed === 'data: [DONE]') {
             controller.close();
+            onClose();
             return;
           }
 
@@ -73,6 +81,7 @@ function parseSseStream(
 
     cancel() {
       reader.cancel();
+      onClose();
     },
   });
 }
@@ -82,10 +91,20 @@ function parseSseStream(
  * the given filename. The transport is read-only — sendMessages is a stub
  * that immediately closes the stream without making a request.
  *
+ * Concurrent calls to reconnectToStream (e.g. from React Strict Mode's
+ * double-invocation of effects) are deduplicated: the second concurrent call
+ * returns null, which the SDK treats as "nothing to resume". The flag resets
+ * when the active stream closes, so legitimate future reconnects (e.g. after
+ * a dropped connection) are allowed through.
+ *
  * @param filename - The novel filename used as the SSE stream key
  * @returns A ChatTransport<UIMessage> for use with useChat
  */
 export function createSSETransport(filename: string): ChatTransport<UIMessage> {
+  // True while a stream is open; resets to false when the stream closes
+  // so that a future reconnect attempt (after a dropped connection) succeeds.
+  let isConnected = false;
+
   return {
     /**
      * Stub — chat send is not implemented in this iteration.
@@ -104,18 +123,33 @@ export function createSSETransport(filename: string): ChatTransport<UIMessage> {
      * a ReadableStream of UIMessageChunks. On reconnect, the server replays
      * the full chunk history so useChat can reconstruct message state.
      *
-     * Returns null if the fetch fails so useChat can handle the error.
+     * Returns null if a connection is already active (concurrent call guard)
+     * or if the fetch fails.
      */
     reconnectToStream: async () => {
-      const response = await fetch(
-        `/api/stream?filename=${encodeURIComponent(filename)}`
-      );
+      // Block concurrent calls (e.g. React Strict Mode double-invocation).
+      // Return null so the SDK's makeRequest bails out without processing
+      // a duplicate stream.
+      if (isConnected) return null;
+      isConnected = true;
 
-      if (!response.ok || !response.body) {
+      try {
+        const response = await fetch(
+          `/api/stream?filename=${encodeURIComponent(filename)}`
+        );
+
+        if (!response.ok || !response.body) {
+          isConnected = false;
+          return null;
+        }
+
+        return parseSseStream(response.body, () => {
+          isConnected = false;
+        });
+      } catch {
+        isConnected = false;
         return null;
       }
-
-      return parseSseStream(response.body);
     },
   };
 }
