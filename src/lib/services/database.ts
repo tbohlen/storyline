@@ -147,6 +147,11 @@ export async function initializeDatabase(): Promise<void> {
       'CREATE INDEX event_char_range_start IF NOT EXISTS FOR (e:Event) ON (e.charRangeStart)'
     );
 
+    // Create composite index on (novelName, quote) for fast duplicate detection
+    await executeQuery(
+      'CREATE INDEX event_novel_quote IF NOT EXISTS FOR (e:Event) ON (e.novelName, e.quote)'
+    );
+
     logger.info('Database schema initialization completed');
   } catch (error) {
     logger.error(`Failed to initialize database schema: ${error}`);

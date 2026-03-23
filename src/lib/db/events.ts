@@ -10,6 +10,7 @@ const logger = loggers.database;
 export interface EventNode {
   id: string;
   spreadsheetId?: string;
+  masterEventName?: string;
   novelName: string;
   quote: string;
   description: string;
@@ -35,6 +36,7 @@ export interface EventRelationship {
  * @param {string} params.description - AI-generated description of the event
  * @param {string} params.novelName - Name of the novel file
  * @param {string} [params.spreadsheetId] - Optional ID from events spreadsheet
+ * @param {string} [params.masterEventName] - Optional human-readable name of the matched master event
  * @param {string} [params.absoluteDate] - Optional hard date if found
  * @returns {Promise<string>} The created event ID
  */
@@ -45,6 +47,7 @@ export async function createEventNode(params: {
   description: string;
   novelName: string;
   spreadsheetId?: string;
+  masterEventName?: string;
   approximateDate?: string;
   absoluteDate?: string;
 }): Promise<string> {
@@ -61,6 +64,7 @@ export async function createEventNode(params: {
       CREATE (e:Event {
         id: $id,
         spreadsheetId: $spreadsheetId,
+        masterEventName: $masterEventName,
         novelName: $novelName,
         quote: $quote,
         description: $description,
@@ -76,6 +80,7 @@ export async function createEventNode(params: {
     const result = await executeQuery(cypher, {
       id: eventId,
       spreadsheetId: params.spreadsheetId || null,
+      masterEventName: params.masterEventName || null,
       novelName: params.novelName,
       quote: params.quote,
       description: params.description,
@@ -217,8 +222,8 @@ export async function findExistingEvent(searchCriteria: {
     const cypher = `
       MATCH (e:Event)
       WHERE ${conditions.join(' AND ')}
-      RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.novelName as novelName,
-             e.quote as quote, e.description as description,
+      RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.masterEventName as masterEventName,
+             e.novelName as novelName, e.quote as quote, e.description as description,
              e.charRangeStart as charRangeStart, e.charRangeEnd as charRangeEnd,
              e.approximateDate as approximateDate, e.absoluteDate as absoluteDate
       LIMIT 1
@@ -235,6 +240,7 @@ export async function findExistingEvent(searchCriteria: {
     const event: EventNode = {
       id: record.get('id'),
       spreadsheetId: record.get('spreadsheetId'),
+      masterEventName: record.get('masterEventName'),
       novelName: record.get('novelName'),
       quote: record.get('quote'),
       description: record.get('description'),
@@ -313,8 +319,8 @@ export async function getAllEvents(novelName?: string): Promise<EventNode[]> {
     const cypher = `
       MATCH (e:Event)
       ${novelName ? 'WHERE e.novelName = $novelName' : ''}
-      RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.novelName as novelName,
-             e.quote as quote, e.description as description,
+      RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.masterEventName as masterEventName,
+             e.novelName as novelName, e.quote as quote, e.description as description,
              e.charRangeStart as charRangeStart, e.charRangeEnd as charRangeEnd,
              e.approximateDate as approximateDate, e.absoluteDate as absoluteDate
       ORDER BY e.charRangeStart ASC
@@ -326,6 +332,7 @@ export async function getAllEvents(novelName?: string): Promise<EventNode[]> {
     const events: EventNode[] = result.records.map(record => ({
       id: record.get('id'),
       spreadsheetId: record.get('spreadsheetId'),
+      masterEventName: record.get('masterEventName'),
       novelName: record.get('novelName'),
       quote: record.get('quote'),
       description: record.get('description'),
@@ -364,8 +371,8 @@ export async function getEventsInRange(
       WHERE e.novelName = $novelName
         AND e.charRangeStart >= $startChar
         AND e.charRangeEnd <= $endChar
-      RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.novelName as novelName,
-             e.quote as quote, e.description as description,
+      RETURN e.id as id, e.spreadsheetId as spreadsheetId, e.masterEventName as masterEventName,
+             e.novelName as novelName, e.quote as quote, e.description as description,
              e.charRangeStart as charRangeStart, e.charRangeEnd as charRangeEnd,
              e.approximateDate as approximateDate, e.absoluteDate as absoluteDate
       ORDER BY e.charRangeStart ASC
@@ -376,6 +383,7 @@ export async function getEventsInRange(
     const events: EventNode[] = result.records.map(record => ({
       id: record.get('id'),
       spreadsheetId: record.get('spreadsheetId'),
+      masterEventName: record.get('masterEventName'),
       novelName: record.get('novelName'),
       quote: record.get('quote'),
       description: record.get('description'),
@@ -412,11 +420,13 @@ export async function getBatchRelationships(
     const cypher = `
       MATCH (from:Event)-[r]->(to:Event)
       WHERE from.id IN $eventIds OR to.id IN $eventIds
-      RETURN from.id as fromId, from.spreadsheetId as fromSpreadsheetId, from.novelName as fromNovelName,
+      RETURN from.id as fromId, from.spreadsheetId as fromSpreadsheetId,
+             from.masterEventName as fromMasterEventName, from.novelName as fromNovelName,
              from.quote as fromQuote, from.description as fromDescription,
              from.charRangeStart as fromCharStart, from.charRangeEnd as fromCharEnd,
              from.approximateDate as fromApproxDate, from.absoluteDate as fromAbsDate,
-             to.id as toId, to.spreadsheetId as toSpreadsheetId, to.novelName as toNovelName,
+             to.id as toId, to.spreadsheetId as toSpreadsheetId,
+             to.masterEventName as toMasterEventName, to.novelName as toNovelName,
              to.quote as toQuote, to.description as toDescription,
              to.charRangeStart as toCharStart, to.charRangeEnd as toCharEnd,
              to.approximateDate as toApproxDate, to.absoluteDate as toAbsDate,
@@ -429,6 +439,7 @@ export async function getBatchRelationships(
       from: {
         id: record.get('fromId'),
         spreadsheetId: record.get('fromSpreadsheetId'),
+        masterEventName: record.get('fromMasterEventName'),
         novelName: record.get('fromNovelName'),
         quote: record.get('fromQuote'),
         description: record.get('fromDescription'),
@@ -440,6 +451,7 @@ export async function getBatchRelationships(
       to: {
         id: record.get('toId'),
         spreadsheetId: record.get('toSpreadsheetId'),
+        masterEventName: record.get('toMasterEventName'),
         novelName: record.get('toNovelName'),
         quote: record.get('toQuote'),
         description: record.get('toDescription'),
