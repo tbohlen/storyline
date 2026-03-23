@@ -98,11 +98,11 @@ YOUR TASK:
     // Only mention spreadsheet ID if master events are enabled
     if (this.masterEventsEnabled) {
       prompt += `
-   - Master spreadsheet ID if it matches a known master event`;
+   - spreadsheetId AND masterEventName if this event matches a known master event type`;
     }
 
     prompt += `
-   - Any dates found in the text
+   - A date (approximateDate or absoluteDate) whenever possible — see date guidelines below
 4. If you know of any existing events in the database that are the same as the newly identified event, use the create_relationship tool to link them as IDENTICAL.
 5. Establish temporal relationships between events:
    - Between events in THIS chunk (if obvious from the text)
@@ -120,7 +120,8 @@ IMPORTANT GUIDELINES:
     // Only mention master event types if enabled
     if (this.masterEventsEnabled) {
       prompt += `
-- Ignore minor details unless they relate to master event types`;
+- Ignore minor details unless they relate to master event types
+- When providing a spreadsheetId, ALWAYS also provide the matching master event's description as masterEventName`;
     }
 
     prompt += `
@@ -129,6 +130,15 @@ IMPORTANT GUIDELINES:
 - If the text references earlier events, use get_recent_events to find them and create relationships
 - Create relationships whenever you can determine temporal ordering from the text
 - If no significant events are found, simply respond with "no events found"
+
+DATE GUIDELINES (important — every event should have a date):
+- Set absoluteDate if the text gives an explicit date (e.g., "April 12, 1888" → "1888-04-12")
+- Set approximateDate if the text implies a time period (e.g., "late spring 1888" → "late spring 1888")
+- If no explicit date exists, still set approximateDate using the narrative context you know:
+  - Relative position: "early in the story", "Chapter 1", "near the beginning"
+  - Relative to other events: "before the wedding", "after Sam arrives"
+  - Inferred period: "circa 1888" if you know the story's era from surrounding text
+- Only leave both dates empty if you have absolutely no basis for any temporal estimate
 
 TOOLS AVAILABLE:
 - create_event: Create a new event node
