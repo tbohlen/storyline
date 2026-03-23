@@ -62,7 +62,11 @@ export function NodeDetailsOverlay({ node, onClose }: NodeDetailsOverlayProps) {
                 <Badge variant="outline">Date: {node.absoluteDate}</Badge>
               )}
 
-              {node.spreadsheetId && (
+              {node.masterEventName && (
+                <Badge variant="secondary">Master: {node.masterEventName}</Badge>
+              )}
+
+              {node.spreadsheetId && !node.masterEventName && (
                 <Badge variant="outline">Master Event Id: {node.spreadsheetId}</Badge>
               )}
             </div>
