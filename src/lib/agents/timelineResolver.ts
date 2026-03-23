@@ -84,7 +84,8 @@ Your task is to analyze the context and establish temporal relationships between
 MASTER EVENT TYPES:
 ${eventsList}
 
-If an event matches a master event type, use find_master_event to get the spreadsheetId, then use update_event to link it.`;
+If an event matches a master event type, use find_master_event to get the spreadsheetId, then use update_event to link it.
+When linking, provide BOTH spreadsheetId AND masterEventName (the description from find_master_event) so users can see the event name in the UI.`;
     }
 
     prompt += `
@@ -96,6 +97,7 @@ CRITICAL GUIDELINES:
 - Both relationships are valid and should be created with their supporting sourceText
 - Contradictions are EXPECTED and valuable - they reveal inconsistencies in the source material
 - Never create a relationship between an event and itself
+- **Every event should have a date** — add one via update_event whenever possible
 
 TEMPORAL MARKERS TO LOOK FOR:
 - Explicit: "the next day", "three weeks later", "meanwhile", "simultaneously", "earlier"
@@ -113,13 +115,17 @@ RELATIONSHIP TYPES:
 WORKFLOW:
 1. Read the context text carefully
 2. Review the batch of events provided
-3. Look for temporal markers in the text
-4. For each pair of events you can relate:
+3. For each event that lacks approximateDate and absoluteDate, infer a date from the context and use update_event:
+   - Use absoluteDate for explicit dates ("April 12, 1888" → "1888-04-12")
+   - Use approximateDate for implied dates ("late spring 1888", "circa 1920", "Chapter 3", "before the wedding")
+   - If no specific date is findable, use a relative position ("early in the narrative", "near the end of Chapter 1")
+   - Only skip date assignment if you have absolutely no temporal basis
+4. Look for temporal markers in the text
+5. For each pair of events you can relate:
    - Use create_relationship with the supporting text
    - Create ALL relationships you find (even if contradictory)
    - If events clearly refer to the same occurrence, mark them as IDENTICAL
-5. If you can infer dates from the context, use update_event to add them
-6. If master events are enabled, use find_master_event and update_event to link events
+6. If master events are enabled, use find_master_event and update_event to link events (include masterEventName)
 7. Think through your reasoning step by step
 
 TOOLS AVAILABLE:
