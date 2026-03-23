@@ -30,6 +30,24 @@ export function GraphCanvas({
   const nvlNodes = nodes.map((node) => {
     const isSelected = selectedNode?.id === node.id;
 
+    // Build a tooltip with all useful context so users can read the full event on hover
+    const datePart = node.absoluteDate
+      ? `Date: ${node.absoluteDate}`
+      : node.approximateDate
+        ? `~${node.approximateDate}`
+        : '';
+    const masterPart = node.masterEventName ? `Master: ${node.masterEventName}` : '';
+    const tooltipParts = [node.description, `"${truncate(node.quote, 120)}"`, datePart, masterPart]
+      .filter(Boolean);
+    const title = tooltipParts.join('\n');
+
+    // Green for master-event-linked nodes, blue for selected, default otherwise
+    const color = isSelected
+      ? "#3b82f6"
+      : node.spreadsheetId
+        ? "#22c55e"
+        : undefined;
+
     return {
       id: node.id,
       labels: ["Event"],
@@ -41,10 +59,10 @@ export function GraphCanvas({
         approximateDate: node.approximateDate,
         absoluteDate: node.absoluteDate,
       },
-      // Style selected node differently
-      color: isSelected ? "#3b82f6" : undefined, // Blue for selected, default for others
-      size: 100,
+      color,
+      size: 150,
       caption: truncate(node.description, 50),
+      title,
     };
   });
 
