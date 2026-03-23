@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
         } catch (error) {
-          logger.error({ filename, error }, 'Failed to replay historical SSE chunk');
+          logger.error({ filename, err: error }, 'Failed to replay historical SSE chunk');
           return; // Stream already closed — bail before registering live listener
         }
       }
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
           );
           logger.debug({ filename, chunkType: chunk.type }, 'SSE chunk sent');
         } catch (error) {
-          logger.error({ filename, error }, 'Failed to send SSE chunk');
+          logger.error({ filename, err: error }, 'Failed to send SSE chunk');
           cleanup();
         }
       });
