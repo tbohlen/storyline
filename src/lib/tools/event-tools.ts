@@ -60,7 +60,6 @@ const createEventInputSchema = z
     path: ["charRangeEnd"],
   });
 
-// TODO: Rename spreadsheetId to masterEventId for clarity
 const createEventInputSchemaWithSpreadsheetId = z
   .object({
     ...baseFields,
@@ -69,6 +68,12 @@ const createEventInputSchemaWithSpreadsheetId = z
       .optional()
       .describe(
         "ID from the master event spreadsheet if this event matches a known event type. Leave undefined if no clear match exists."
+      ),
+    masterEventName: z
+      .string()
+      .optional()
+      .describe(
+        "Human-readable name/description of the matched master event from the spreadsheet. Include this whenever you provide a spreadsheetId so users can see which master event was matched."
       ),
   })
   .refine((data) => data.charRangeEnd > data.charRangeStart, {
@@ -126,6 +131,7 @@ const updateEventInputSchema = z.object({
   eventId: z.string().describe('ID of the event to update'),
   description: z.string().optional().describe('Updated description'),
   spreadsheetId: z.string().optional().describe('Master event spreadsheet ID'),
+  masterEventName: z.string().optional().describe('Human-readable name of the matched master event. Provide this alongside spreadsheetId so users can see the event name in the UI.'),
   approximateDate: z.string().optional().describe('Approximate or inferred date'),
   absoluteDate: z.string().optional().describe('Explicit hard date (ISO format)'),
 });
@@ -252,6 +258,24 @@ Do NOT create events for:
           );
         }
 
+        // Check for an existing event with the same quote to prevent duplicates
+        // (can occur when overlapping text chunks process the same passage twice)
+        const existingEvent = await findExistingEvent({
+          quote: params.quote,
+          novelName: context.novelName,
+        });
+        if (existingEvent) {
+          logger.info(
+            { existingEventId: existingEvent.id, quote: params.quote.substring(0, 80) },
+            'Skipping duplicate event — same quote already exists'
+          );
+          return {
+            success: true,
+            eventId: existingEvent.id,
+            message: `Duplicate skipped — event with this quote already exists (ID: ${existingEvent.id})`,
+          };
+        }
+
         // Convert chunk-relative positions to global positions
         const globalCharStart =
           context.globalStartPosition + params.charRangeStart;
@@ -266,7 +290,7 @@ Do NOT create events for:
         );
 
         // Create event in database
-        // Note: spreadsheetId may be undefined if master events are disabled
+        // Note: spreadsheetId/masterEventName may be undefined if master events are disabled
         const eventId = await createEventNode({
           quote: params.quote,
           description: params.description,
@@ -274,6 +298,7 @@ Do NOT create events for:
           charRangeEnd: globalCharEnd,
           novelName: context.novelName,
           spreadsheetId: params.spreadsheetId,
+          masterEventName: params.masterEventName,
           approximateDate: params.approximateDate,
           absoluteDate: params.absoluteDate,
         });
