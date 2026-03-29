@@ -42,6 +42,12 @@ interface GraphStore {
   setError: (error: string | null) => void;
   clearSelectedNode: () => void;
   clearSelectedEdge: () => void;
+
+  /**
+   * Fetches fresh graph data from /api/graph and updates the store.
+   * Called by ChatPanel after tool calls that modify the timeline.
+   */
+  fetchGraph: (filename: string) => Promise<void>;
 }
 
 /**
@@ -63,4 +69,16 @@ export const useGraphStore = create<GraphStore>((set) => ({
   setError: (error) => set({ error }),
   clearSelectedNode: () => set({ selectedNode: null }),
   clearSelectedEdge: () => set({ selectedEdge: null }),
+
+  fetchGraph: async (filename: string) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await fetch(`/api/graph?filename=${encodeURIComponent(filename)}`);
+      if (!response.ok) throw new Error(`Graph fetch failed: ${response.statusText}`);
+      const data: GraphData = await response.json();
+      set({ graphData: data, loading: false });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : String(err), loading: false });
+    }
+  },
 }));
