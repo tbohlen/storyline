@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import type { UIMessage, TextUIPart, ReasoningUIPart } from 'ai';
 import {
@@ -18,11 +18,13 @@ import {
   ReasoningTrigger,
   ReasoningContent
 } from '@/components/ai-elements/reasoning';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StorylineMessagePart } from '@/lib/utils/message-helpers';
 import { createSSETransport } from '@/lib/transport/sse-transport';
 import ToolRenderer from './tool-renderer';
+import { AnalysisProgressBar, type ProgressState } from './analysis-progress-bar';
+import { Shimmer } from '@/components/ai-elements/shimmer';
 
 interface OrchestratorObserverProps {
   filename: string;
@@ -37,15 +39,49 @@ interface OrchestratorObserverProps {
  * (resume: true) and replays chunk history from the server.
  */
 export function OrchestratorObserver({ filename, className }: OrchestratorObserverProps) {
-  const transport = useMemo(() => createSSETransport(filename), [filename]);
+  const [transport] = useState(() => createSSETransport(filename));
 
-  const { messages, status, error } = useChat({ transport, resume: true });
+  const { messages, error } = useChat({ transport, resume: true });
+
+  // Maintained via useEffect so we only inspect the most-recently-appended parts
+  // rather than re-scanning the full message history on every render.
+  const [progressState, setProgressState] = useState<ProgressState>({ phase: 'idle', current: 0, total: 0 });
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage) return;
+    for (let i = lastMessage.parts.length - 1; i >= 0; i--) {
+      const part = lastMessage.parts[i] as StorylineMessagePart;
+      if (part.type !== 'data-status') continue;
+      const d = (part as DataPart).data;
+      setIsAnalyzing(d?.status === 'analyzing');
+      if (d?.status === 'completed' && !d?.phase) {
+        setProgressState({ phase: 'complete', current: 0, total: 0 });
+      } else if (d?.phase === 'event-detection' && typeof d?.totalChunks === 'number') {
+        setProgressState({
+          phase: 'event-detection',
+          current: (d.chunkNumber as number) ?? 0,
+          total: d.totalChunks as number,
+        });
+      } else if (d?.phase === 'timeline-resolution' && typeof d?.totalBatches === 'number') {
+        setProgressState({
+          phase: 'timeline-resolution',
+          current: (d.batchNumber as number) ?? 0,
+          total: d.totalBatches as number,
+        });
+      }
+      break;
+    }
+  }, [messages]);
 
   return (
     <div className={cn("h-full flex flex-col bg-muted/40", className)}>
       <div className="px-4 py-3 flex items-center justify-between gap-8 overflow-hidden border-b border-border">
         <span className="text-lg font-medium text-ellipsis whitespace-nowrap shrink overflow-hidden">Chat {filename}</span>
       </div>
+
+      <AnalysisProgressBar progressState={progressState} isAnalyzing={isAnalyzing} />
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950 dark:border-red-800">
@@ -58,8 +94,13 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
 
       <Conversation>
         <ConversationContent>
-          {messages.map((message) => (
-            <MessageRenderer key={message.id} message={message} />
+          {messages.map((message, index) => (
+            <MessageRenderer
+              key={message.id}
+              message={message}
+              isLast={index === messages.length - 1}
+              isAnalyzing={isAnalyzing}
+            />
           ))}
         </ConversationContent>
         <ConversationScrollButton />
@@ -68,16 +109,32 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
   );
 }
 
+// Extract only tool parts from StorylineMessagePart
+type ToolPart = Extract<StorylineMessagePart, { type: `tool-${string}` }>;
+
+// Extract only data parts from StorylineMessagePart
+type DataPart = Extract<StorylineMessagePart, { type: `data-${string}` }>;
+
 /**
- * Render individual messages with parts
+ * Render individual messages with parts.
+ * Passes shimmer flag only to the last data-status part in the last message
+ * so the "Analyzing…" shimmer appears only on the most recent status.
  */
-function MessageRenderer({ message }: { message: UIMessage }) {
+function MessageRenderer({ message, isLast, isAnalyzing }: { message: UIMessage; isLast: boolean; isAnalyzing: boolean }) {
+  // Find the index of the last data-* part so we can show the shimmer on it
+  const lastDataIndex = isLast
+    ? message.parts.reduce((acc, p, i) => (p.type.startsWith('data-') ? i : acc), -1)
+    : -1;
+
   return (
     <MessageComponent from={message.role}>
       <MessageContent>
-        {/* Render message parts */}
         {message.parts.map((part, index: number) => (
-          <PartRenderer key={index} part={part as StorylineMessagePart} />
+          <PartRenderer
+            key={index}
+            part={part as StorylineMessagePart}
+            showShimmer={isAnalyzing && index === lastDataIndex}
+          />
         ))}
       </MessageContent>
     </MessageComponent>
@@ -87,7 +144,7 @@ function MessageRenderer({ message }: { message: UIMessage }) {
 /**
  * Renderer for individual message parts
  */
-function PartRenderer({ part }: { part: StorylineMessagePart }) {
+function PartRenderer({ part, showShimmer }: { part: StorylineMessagePart; showShimmer: boolean }) {
   switch (part.type.split("-")[0]) {
     case 'text':
       return <MessageResponse>{(part as TextUIPart).text}</MessageResponse>;
@@ -101,7 +158,7 @@ function PartRenderer({ part }: { part: StorylineMessagePart }) {
       );
 
     case 'data':
-      return <EventStatusRenderer part={part as DataPart} />;
+      return <EventStatusRenderer part={part as DataPart} showShimmer={showShimmer} />;
 
     case 'tool':
         return <ToolRenderer part={part as ToolPart} />;
@@ -111,23 +168,26 @@ function PartRenderer({ part }: { part: StorylineMessagePart }) {
   }
 }
 
-// Extract only tool parts from StorylineMessagePart
-type ToolPart = Extract<StorylineMessagePart, { type: `tool-${string}` }>;
-
-// Extract only data parts from StorylineMessagePart
-type DataPart = Extract<StorylineMessagePart, { type: `data-${string}` }>;
-
 /**
- * Custom component for event status messages
+ * Custom component for event status messages.
+ * When showShimmer is true, renders an animated shimmer below the status text
+ * to indicate the AI is actively working.
  */
-function EventStatusRenderer({ part }: { part: DataPart }) {
+function EventStatusRenderer({ part, showShimmer }: { part: DataPart; showShimmer: boolean }) {
   const status = part.data?.status || 'processing';
   const text = part.data?.text || '';
 
   return (
-    <div className={"italic text-gray-500"}>
+    <div className="italic text-gray-500">
       <span className="text-sm capitalize">{status.replace("_", " ")}: </span>
       <span>{text}</span>
+      {showShimmer && status === 'analyzing' && (
+        <div className="mt-0.5">
+          <Shimmer as="span" duration={1.5} className="text-sm not-italic">
+            Analyzing…
+          </Shimmer>
+        </div>
+      )}
     </div>
   );
 }
