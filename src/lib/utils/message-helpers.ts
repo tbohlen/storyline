@@ -10,6 +10,8 @@ import type {
   UpdateEventOutput,
   GetRecentEventsInput,
   GetRecentEventsOutput,
+  GetEventsInRangeInput,
+  GetEventsInRangeOutput,
   FindMasterEventInput,
   FindMasterEventOutput,
 } from "../tools/event-tools";
@@ -66,6 +68,10 @@ type StorylineTools = {
   get_recent_events: {
     input: GetRecentEventsInput;
     output: GetRecentEventsOutput;
+  };
+  get_events_in_range: {
+    input: GetEventsInRangeInput;
+    output: GetEventsInRangeOutput;
   };
   find_master_event: {
     input: FindMasterEventInput;

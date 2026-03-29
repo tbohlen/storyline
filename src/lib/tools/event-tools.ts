@@ -160,6 +160,27 @@ const getRecentEventsOutputSchema = z.object({
   count: z.number(),
 });
 
+// --- get_events_in_range tool schemas ---
+const getEventsInRangeInputSchema = z.object({
+  startChar: z.number().int().nonnegative().optional().describe('Inclusive start character offset. Omit to start from the beginning of the novel.'),
+  endChar: z.number().int().positive().optional().describe('Inclusive end character offset. Omit to include events through the end of the novel.'),
+  limit: z.number().int().positive().optional().default(20).describe('Maximum number of events to return (default: 20, max: 100)'),
+});
+
+const getEventsInRangeOutputSchema = z.object({
+  success: z.boolean(),
+  events: z.array(z.object({
+    id: z.string(),
+    quote: z.string(),
+    description: z.string(),
+    charRangeStart: z.number(),
+    charRangeEnd: z.number(),
+    approximateDate: z.string().optional(),
+    absoluteDate: z.string().optional(),
+  })),
+  count: z.number(),
+});
+
 // --- find_master_event tool schemas ---
 const findMasterEventInputSchema = z.object({
   description: z.string().describe('Event description to search for in master events'),
@@ -202,6 +223,9 @@ export type UpdateEventOutput = z.infer<typeof updateEventOutputSchema>;
 
 export type GetRecentEventsInput = z.infer<typeof getRecentEventsInputSchema>;
 export type GetRecentEventsOutput = z.infer<typeof getRecentEventsOutputSchema>;
+
+export type GetEventsInRangeInput = z.infer<typeof getEventsInRangeInputSchema>;
+export type GetEventsInRangeOutput = z.infer<typeof getEventsInRangeOutputSchema>;
 
 export type FindMasterEventInput = z.infer<typeof findMasterEventInputSchema>;
 export type FindMasterEventOutput = z.infer<typeof findMasterEventOutputSchema>;
@@ -489,6 +513,59 @@ For example, if the current text says "the next day after the party" and you cre
 }
 
 /**
+ * Creates the get_events_in_range tool.
+ * Allows the chat agent to retrieve events from a specific character range,
+ * or all events when no range is specified.
+ * Not used by orchestrator agents — they use get_recent_events instead.
+ */
+function getEventsInRangeTool(context: EventToolContext) {
+  return tool({
+    description: `Retrieve events from the timeline within a character offset range.
+Pass startChar and/or endChar to narrow to a section of the novel.
+Omit both to retrieve events from the entire novel.
+
+Use this to answer questions like:
+- "What events are in the timeline?"
+- "What happens in the first part of the novel?"
+- "Show me everything around the battle scene"`,
+
+    inputSchema: getEventsInRangeInputSchema,
+
+    execute: async (params: GetEventsInRangeInput) => {
+      try {
+        const limit = Math.min(params.limit ?? 20, 100);
+        const allEvents = await getAllEvents(context.novelName);
+
+        const filtered = allEvents.filter(e => {
+          const afterStart = params.startChar === undefined || e.charRangeStart >= params.startChar;
+          const beforeEnd = params.endChar === undefined || e.charRangeStart <= params.endChar;
+          return afterStart && beforeEnd;
+        });
+
+        const sliced = filtered.slice(0, limit);
+
+        return {
+          success: true,
+          events: sliced.map(e => ({
+            id: e.id,
+            quote: e.quote.substring(0, 150) + (e.quote.length > 150 ? '...' : ''),
+            description: e.description,
+            charRangeStart: e.charRangeStart,
+            charRangeEnd: e.charRangeEnd,
+            approximateDate: e.approximateDate,
+            absoluteDate: e.absoluteDate,
+          })),
+          count: sliced.length,
+        };
+      } catch (error) {
+        logger.error({ error, params }, 'Failed to get events in range');
+        throw error;
+      }
+    },
+  });
+}
+
+/**
  * Creates the find_master_event tool.
  * Allows the agent to search the master events spreadsheet for matching event types.
  */
@@ -577,6 +654,27 @@ export function createEventTools(context: EventToolContext) {
     find_event: findEventTool(context),
     update_event: updateEventTool(context),
     get_recent_events: getRecentEventsTool(context),
+    ...(context.masterEventsEnabled && {
+      find_master_event: findMasterEventTool(context)
+    })
+  };
+}
+
+/**
+ * Factory function that creates the chat-specific tool set.
+ * Includes get_events_in_range instead of get_recent_events, since the
+ * position-filtered get_recent_events is only useful during orchestrator processing.
+ *
+ * @param context - Event tool context. globalStartPosition is ignored for chat tools.
+ * @returns Object containing all chat tools
+ */
+export function createChatTools(context: EventToolContext) {
+  return {
+    create_event: createEventTool(context),
+    create_relationship: createRelationshipTool(context),
+    find_event: findEventTool(context),
+    update_event: updateEventTool(context),
+    get_events_in_range: getEventsInRangeTool(context),
     ...(context.masterEventsEnabled && {
       find_master_event: findMasterEventTool(context)
     })
