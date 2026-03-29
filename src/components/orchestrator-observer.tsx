@@ -179,11 +179,13 @@ function EventStatusRenderer({ part, showShimmer }: { part: DataPart; showShimme
 
   return (
     <div className="italic text-gray-500">
-      <span className="text-sm capitalize">{status.replace("_", " ")}: </span>
+      {status !== 'analyzing' && (
+        <span className="text-sm capitalize">{status.replace("_", " ")}: </span>
+      )}
       <span>{text}</span>
       {showShimmer && status === 'analyzing' && (
-        <div className="mt-0.5">
-          <Shimmer as="span" duration={1.5} className="text-sm not-italic">
+        <div className="mt-2 pl-3 border-l-2 border-primary/40 not-italic">
+          <Shimmer as="span" duration={1.5} className="text-sm font-medium">
             Analyzing…
           </Shimmer>
         </div>
