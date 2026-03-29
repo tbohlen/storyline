@@ -195,9 +195,19 @@ export class Orchestrator {
       // Reset reader position
       this.novelReader.setPosition(0);
 
+      // Pre-calculate approximate total chunks so progress can be reported
+      const totalChunks = Math.ceil(
+        this.stats.totalCharacters / (this.config.chunkSize - this.config.overlapSize)
+      );
+      emitStatusMessage(this.emitChunk, 'orchestrator', 'analyzing', 'Starting event detection...', {
+        phase: 'event-detection',
+        chunkNumber: 0,
+        totalChunks,
+      });
+
       while (!this.novelReader.isAtEnd()) {
         try {
-          await this.processNextChunk();
+          await this.processNextChunk(totalChunks);
         } catch (error) {
           const errorMsg = `Failed to process chunk at position ${this.novelReader.getCurrentPosition()}: ${error}`;
           emitStatusMessage(this.emitChunk, 'orchestrator', 'error', errorMsg, {
@@ -254,9 +264,10 @@ export class Orchestrator {
   /**
    * Find a chunk of text in the novel, then analyze it for events, logging out
    * the results as we go.
+   * @param {number} totalChunks - Approximate total number of chunks for progress reporting
    * @returns {Promise<void>}
    */
-  private async processNextChunk(): Promise<void> {
+  private async processNextChunk(totalChunks: number): Promise<void> {
     const currentPosition = this.novelReader.getCurrentPosition();
 
     // Get clean text chunk with word boundaries
@@ -279,7 +290,11 @@ export class Orchestrator {
     // Handle agent response
     // TODO: Confirm that these no event found and event found parsing logics are correct with our new agent-based approach.
     if (result === "no event found") {
-      emitStatusMessage(this.emitChunk, 'event-detector', 'success', `No events found in chunk ${chunkNumber}`);
+      emitStatusMessage(this.emitChunk, 'event-detector', 'success', `No events found in chunk ${chunkNumber}`, {
+        phase: 'event-detection',
+        chunkNumber,
+        totalChunks,
+      });
       logger.debug(`No events found in chunk ${this.stats.chunksProcessed + 1}`);
 
       // Advance position by chunk size minus overlap
@@ -301,6 +316,8 @@ export class Orchestrator {
         emitStatusMessage(this.emitChunk, 'event-detector', 'event_found', `Found ${eventCount} event(s) in chunk ${chunkNumber}`, {
           eventCount,
           chunkNumber,
+          totalChunks,
+          phase: 'event-detection',
           result: resultPreview,
         });
       }
@@ -386,6 +403,9 @@ export class Orchestrator {
       emitStatusMessage(this.emitChunk, 'orchestrator', 'analyzing', `Analyzing ${batches.length} batches of events`, {
         batchCount: batches.length,
         eventCount: allEvents.length,
+        phase: 'timeline-resolution',
+        batchNumber: 0,
+        totalBatches: batches.length,
       });
 
       // Initialize timeline resolver
@@ -469,6 +489,7 @@ export class Orchestrator {
           );
 
           emitStatusMessage(this.emitChunk, 'orchestrator', 'processing', `Batch ${batchNumber}/${batches.length} complete`, {
+            phase: 'timeline-resolution',
             batchNumber,
             totalBatches: batches.length,
             progress: Math.round((batchNumber / batches.length) * 100),
