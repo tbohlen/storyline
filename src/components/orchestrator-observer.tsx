@@ -25,6 +25,7 @@ import { createSSETransport } from '@/lib/transport/sse-transport';
 import ToolRenderer from './tool-renderer';
 import { AnalysisProgressBar, type ProgressState } from './analysis-progress-bar';
 import { Shimmer } from '@/components/ai-elements/shimmer';
+import { ChatPanel } from './chat-panel';
 
 interface OrchestratorObserverProps {
   filename: string;
@@ -92,19 +93,23 @@ export function OrchestratorObserver({ filename, className }: OrchestratorObserv
         </div>
       )}
 
-      <Conversation>
-        <ConversationContent>
-          {messages.map((message, index) => (
-            <MessageRenderer
-              key={message.id}
-              message={message}
-              isLast={index === messages.length - 1}
-              isAnalyzing={isAnalyzing}
-            />
-          ))}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+      {progressState.phase === 'complete' ? (
+        <ChatPanel filename={filename} />
+      ) : (
+        <Conversation>
+          <ConversationContent>
+            {messages.map((message, index) => (
+              <MessageRenderer
+                key={message.id}
+                message={message}
+                isLast={index === messages.length - 1}
+                isAnalyzing={isAnalyzing}
+              />
+            ))}
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
+      )}
     </div>
   );
 }
