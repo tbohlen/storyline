@@ -81,6 +81,12 @@ Establish a temporal relationship between two existing events. Requires a `sourc
 ## `update_event`
 Correct an event's description, dates, or master event link. Use this when the user identifies an error in how an event was recorded, or when you determine a date can be more precisely specified.
 
+## `delete_event`
+Permanently remove an event node and all of its relationships. This cannot be undone — always confirm with the user before calling it. Use `find_event` or `get_events_in_range` to obtain the event ID first.
+
+## `delete_relationship`
+Remove a specific directed relationship between two events. Requires `fromEventId`, `toEventId`, and `relationshipType`. Use this when a relationship was created in error or is contradicted by the text.
+
 ## `find_master_event` *(if enabled)*
 Search the master events spreadsheet for a matching category. Use this when linking an event to a predefined story beat.
 
@@ -91,7 +97,7 @@ Returns total character count, estimated word count, and estimated page count fo
 Reads a character-position slice of the novel source text. Accepts `startChar`, `endChar`, and an optional `padding` (extra characters to include on each side). Use this after obtaining event positions from `find_event` or `get_events_in_range` to inspect the surrounding text and verify quotes.
 
 ## `search_text`
-Fuzzy full-text search using Fuse.js. Splits the novel into overlapping passages and scores each against the query — surfaces relevant passages even when phrasing differs from the query. Returns matches with absolute character positions (`matchStart`, `matchEnd`) and surrounding context so you can follow up with `read_text_range`. Use this when the user asks where a character, place, or event appears, or when verifying a quote you are uncertain about.
+Fuzzy full-text search of the entire novel using Fuse.js. Splits the novel into overlapping passages and scores each against the query — surfaces relevant passages even when phrasing differs from the query. Returns matches with absolute character positions (`matchStart`, `matchEnd`) and surrounding context so you can follow up with `read_text_range`. Use this when the user asks where a character, place, or event appears, or when verifying a quote you are uncertain about.
 
 Key parameters:
 - `query`: the phrase or description to search for

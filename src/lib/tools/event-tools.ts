@@ -13,6 +13,8 @@ import {
   findExistingEvent,
   updateEventNode,
   getAllEvents,
+  deleteEventNode,
+  deleteRelationship,
 } from '../db/events';
 import { loggers } from '../utils/logger';
 import { createNovelTools } from './novel-tools';
@@ -634,6 +636,74 @@ This is useful during timeline resolution when you want to categorize events by 
 }
 
 /**
+ * Creates the delete_event tool.
+ * Permanently removes an event node and all of its relationships from the graph.
+ */
+function deleteEventTool(context: EventToolContext) {
+  return tool({
+    description:
+      'Permanently delete an event node and all relationships connected to it. ' +
+      'Use find_event or get_events_in_range to obtain the event ID before calling this. ' +
+      'This cannot be undone — confirm with the user before deleting.',
+    inputSchema: z.object({
+      eventId: z.string().describe('The ID of the event to delete.'),
+    }),
+    execute: async ({ eventId }) => {
+      try {
+        const found = await deleteEventNode(eventId);
+        if (!found) {
+          return { success: false, message: `No event found with ID ${eventId}.` };
+        }
+        context.emitChunk({ type: 'data-graph-refresh', data: {} } as never);
+        return { success: true, message: `Event ${eventId} and all its relationships have been deleted.` };
+      } catch (error) {
+        logger.error({ error, eventId }, 'delete_event tool failed');
+        return { success: false, message: `Failed to delete event: ${error}` };
+      }
+    },
+  });
+}
+
+/**
+ * Creates the delete_relationship tool.
+ * Removes a specific directed relationship between two events.
+ */
+function deleteRelationshipTool(context: EventToolContext) {
+  return tool({
+    description:
+      'Delete a specific directed relationship between two events. ' +
+      'You must supply the IDs of both events and the relationship type. ' +
+      'Use find_event or get_events_in_range to obtain event IDs first.',
+    inputSchema: z.object({
+      fromEventId: z.string().describe('ID of the source event.'),
+      toEventId: z.string().describe('ID of the target event.'),
+      relationshipType: z
+        .enum(['BEFORE', 'AFTER', 'CONCURRENT', 'IDENTICAL'])
+        .describe('The type of relationship to delete.'),
+    }),
+    execute: async ({ fromEventId, toEventId, relationshipType }) => {
+      try {
+        const found = await deleteRelationship(fromEventId, toEventId, relationshipType);
+        if (!found) {
+          return {
+            success: false,
+            message: `No ${relationshipType} relationship found from ${fromEventId} to ${toEventId}.`,
+          };
+        }
+        context.emitChunk({ type: 'data-graph-refresh', data: {} } as never);
+        return {
+          success: true,
+          message: `${relationshipType} relationship from ${fromEventId} to ${toEventId} has been deleted.`,
+        };
+      } catch (error) {
+        logger.error({ error, fromEventId, toEventId, relationshipType }, 'delete_relationship tool failed');
+        return { success: false, message: `Failed to delete relationship: ${error}` };
+      }
+    },
+  });
+}
+
+/**
  * Factory function that creates all event tools with the provided context.
  *
  * @param context - Event tool context containing shared state and functions
@@ -654,6 +724,8 @@ export function createEventTools(context: EventToolContext) {
     create_relationship: createRelationshipTool(context),
     find_event: findEventTool(context),
     update_event: updateEventTool(context),
+    delete_event: deleteEventTool(context),
+    delete_relationship: deleteRelationshipTool(context),
     get_recent_events: getRecentEventsTool(context),
     ...(context.masterEventsEnabled && {
       find_master_event: findMasterEventTool(context)
@@ -675,6 +747,8 @@ export function createChatTools(context: EventToolContext) {
     create_relationship: createRelationshipTool(context),
     find_event: findEventTool(context),
     update_event: updateEventTool(context),
+    delete_event: deleteEventTool(context),
+    delete_relationship: deleteRelationshipTool(context),
     get_events_in_range: getEventsInRangeTool(context),
     ...createNovelTools(context),
     ...(context.masterEventsEnabled && {
