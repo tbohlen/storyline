@@ -125,10 +125,21 @@ type DataPart = Extract<StorylineMessagePart, { type: `data-${string}` }>;
  * Passes shimmer flag only to the last data-status part in the last message
  * so the "Analyzing…" shimmer appears only on the most recent status.
  */
-function MessageRenderer({ message, isLast, isAnalyzing }: { message: UIMessage; isLast: boolean; isAnalyzing: boolean }) {
+function MessageRenderer({
+  message,
+  isLast,
+  isAnalyzing,
+}: {
+  message: UIMessage;
+  isLast: boolean;
+  isAnalyzing: boolean;
+}) {
   // Find the index of the last data-* part so we can show the shimmer on it
   const lastDataIndex = isLast
-    ? message.parts.reduce((acc, p, i) => (p.type.startsWith('data-') ? i : acc), -1)
+    ? message.parts.reduce(
+        (acc, p, i) => (p.type.startsWith("data-") ? i : acc),
+        -1,
+      )
     : -1;
 
   return (

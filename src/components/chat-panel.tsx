@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
-import type { UIMessage, TextUIPart, ReasoningUIPart } from "ai";
+import { DefaultChatTransport } from "ai";
+import type { UIMessage, TextUIPart, ReasoningUIPart, ChatOnFinishCallback } from "ai";
 import {
   Conversation,
   ConversationContent,
@@ -19,7 +20,12 @@ import {
   ReasoningTrigger,
   ReasoningContent,
 } from "@/components/ai-elements/reasoning";
-import { ChatInputBar } from "@/components/chat-input-bar";
+import {
+  PromptInput,
+  PromptInputTextarea,
+  PromptInputFooter,
+  PromptInputSubmit,
+} from "@/components/ai-elements/prompt-input";
 import ToolRenderer from "@/components/tool-renderer";
 import { useGraphStore } from "@/lib/store/graph-store";
 import type { StorylineMessagePart } from "@/lib/utils/message-helpers";
@@ -44,8 +50,8 @@ const WRITE_TOOL_NAMES = new Set([
 export function ChatPanel({ filename }: ChatPanelProps) {
   const fetchGraph = useGraphStore((s) => s.fetchGraph);
 
-  const handleFinish = useCallback(
-    (message: UIMessage) => {
+  const handleFinish = useCallback<ChatOnFinishCallback<UIMessage>>(
+    ({ message }) => {
       const hasWriteToolCall = message.parts.some(
         (p) =>
           WRITE_TOOL_NAMES.has(p.type) &&
@@ -59,9 +65,13 @@ export function ChatPanel({ filename }: ChatPanelProps) {
     [fetchGraph, filename]
   );
 
-  const { messages, input, handleInputChange, handleSubmit, status } = useChat({
-    api: "/api/chat",
-    body: { filename },
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/chat", body: { filename } }),
+    [filename]
+  );
+
+  const { messages, sendMessage, status } = useChat({
+    transport,
     onFinish: handleFinish,
   });
 
@@ -94,13 +104,21 @@ export function ChatPanel({ filename }: ChatPanelProps) {
       </Conversation>
 
       <div className="shrink-0 p-3 border-t border-border bg-background">
-        <ChatInputBar
-          value={input}
-          onChange={handleInputChange}
-          onSubmit={handleSubmit}
-          disabled={isLoading}
-          placeholder="Ask about the timeline…"
-        />
+        <PromptInput
+          onSubmit={({ text }) => {
+            if (text.trim()) {
+              sendMessage({ text });
+            }
+          }}
+        >
+          <PromptInputTextarea
+            placeholder="Ask about the timeline…"
+            disabled={isLoading}
+          />
+          <PromptInputFooter>
+            <PromptInputSubmit status={status} />
+          </PromptInputFooter>
+        </PromptInput>
       </div>
     </div>
   );
