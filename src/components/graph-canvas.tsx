@@ -6,6 +6,7 @@ import { useGraphStore } from '@/lib/store/graph-store';
 import type { EventNode } from '@/lib/db/events';
 import type { GraphEdge } from '@/lib/store/graph-store';
 import truncate from '@/lib/utils/truncate';
+import { size } from 'zod';
 
 interface GraphCanvasProps {
   nodes: EventNode[];
@@ -80,6 +81,7 @@ export function GraphCanvas({
         sourceText: edge.sourceText,
       },
       color: isSelected ? "#3b82f6" : undefined, // Blue for selected, default for others
+      captionSize: 3,
     };
   });
 

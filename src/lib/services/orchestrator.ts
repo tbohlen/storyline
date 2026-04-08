@@ -282,10 +282,26 @@ export class Orchestrator {
       `Processing chunk ${chunkNumber} - actualStart: ${chunkData.actualStart}, actualEnd: ${chunkData.actualEnd}, chunkLength: ${chunkData.text.length}`
     );
 
+    // Emit pre-analysis status
+    emitStatusMessage(
+      this.emitChunk,
+      "event-detector",
+      "analyzing",
+      `Starting chunk analysis: ${chunkNumber} of ${totalChunks}`,
+      {
+        chunkLength: chunkData.text.length,
+        globalStartPosition: chunkData.actualStart,
+        phase: "event-detection",
+      },
+    );
+
+
     const result = await this.eventDetector.simpleAnalysis(
       chunkData.text,
       chunkData.actualStart
     );
+
+    logger.debug({ result}, "Result from event dedection");
 
     // Handle agent response
     // TODO: Confirm that these no event found and event found parsing logics are correct with our new agent-based approach.
@@ -469,6 +485,14 @@ export class Orchestrator {
               contextLength: contextText.length,
             },
             "Extracted context text for batch"
+          );
+
+          emitStatusMessage(
+            this.emitChunk,
+            'timeline-resolver',
+            'analyzing',
+            `Analyzing batch ${batchNumber} of ${batches.length}. Batch contains ${batch.length} events`,
+            { eventCount: batch.length, contextLength: contextText.length }
           );
 
           // Analyze batch

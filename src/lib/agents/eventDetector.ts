@@ -171,15 +171,6 @@ TOOLS AVAILABLE:
         "Analyzing text chunk for events"
       );
 
-      // Emit pre-analysis status
-      emitStatusMessage(
-        this.emitChunk,
-        'event-detector',
-        'analyzing',
-        "Starting chunk analysis",
-        { chunkLength: textChunk.length, globalStartPosition, phase: 'event-detection' }
-      );
-
       // Create tools with context including emit function
       const tools = createEventTools({
         globalStartPosition,

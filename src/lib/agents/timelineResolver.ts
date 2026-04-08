@@ -176,14 +176,6 @@ Remember: Your job is to document what the text says, not to resolve contradicti
         "Analyzing event batch for timeline resolution"
       );
 
-      emitStatusMessage(
-        this.emitChunk,
-        'timeline-resolver',
-        'analyzing',
-        `Analyzing batch of ${events.length} events`,
-        { eventCount: events.length, contextLength: contextText.length }
-      );
-
       // Get existing relationships for these events
       const eventIds = events.map(e => e.id);
       const existingRelationships = await getBatchRelationships(eventIds);
