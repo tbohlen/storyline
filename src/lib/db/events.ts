@@ -403,6 +403,77 @@ export async function getEventsInRange(
 }
 
 /**
+ * Deletes an event node and all of its relationships from the database.
+ * Uses DETACH DELETE so any connected relationships are removed automatically.
+ * @param {string} eventId - ID of the event to delete
+ * @returns {Promise<boolean>} true if the event was found and deleted, false if not found
+ */
+export async function deleteEventNode(eventId: string): Promise<boolean> {
+  try {
+    logger.info({ eventId }, 'Deleting event node');
+
+    const cypher = `
+      MATCH (e:Event {id: $eventId})
+      DETACH DELETE e
+      RETURN count(e) as deleted
+    `;
+
+    const result = await executeQuery(cypher, { eventId });
+    const deleted = result.records[0]?.get('deleted')?.toNumber?.() ?? result.records[0]?.get('deleted');
+    const found = Number(deleted) > 0;
+
+    if (found) {
+      logger.info({ eventId }, 'Event node deleted successfully');
+    } else {
+      logger.warn({ eventId }, 'Delete attempted but event not found');
+    }
+    return found;
+
+  } catch (error) {
+    logger.error({ eventId, error }, 'Failed to delete event node');
+    throw new Error(`Failed to delete event node: ${error}`);
+  }
+}
+
+/**
+ * Deletes a specific directed relationship between two events.
+ * @param {string} fromEventId - Source event ID
+ * @param {string} toEventId - Target event ID
+ * @param {string} relationshipType - BEFORE | AFTER | CONCURRENT | IDENTICAL
+ * @returns {Promise<boolean>} true if the relationship was found and deleted, false if not found
+ */
+export async function deleteRelationship(
+  fromEventId: string,
+  toEventId: string,
+  relationshipType: 'BEFORE' | 'AFTER' | 'CONCURRENT' | 'IDENTICAL'
+): Promise<boolean> {
+  try {
+    logger.info({ fromEventId, toEventId, relationshipType }, 'Deleting relationship');
+
+    const cypher = `
+      MATCH (from:Event {id: $fromEventId})-[r:${relationshipType}]->(to:Event {id: $toEventId})
+      DELETE r
+      RETURN count(r) as deleted
+    `;
+
+    const result = await executeQuery(cypher, { fromEventId, toEventId });
+    const deleted = result.records[0]?.get('deleted')?.toNumber?.() ?? result.records[0]?.get('deleted');
+    const found = Number(deleted) > 0;
+
+    if (found) {
+      logger.info({ fromEventId, toEventId, relationshipType }, 'Relationship deleted successfully');
+    } else {
+      logger.warn({ fromEventId, toEventId, relationshipType }, 'Delete attempted but relationship not found');
+    }
+    return found;
+
+  } catch (error) {
+    logger.error({ fromEventId, toEventId, relationshipType, error }, 'Failed to delete relationship');
+    throw new Error(`Failed to delete relationship: ${error}`);
+  }
+}
+
+/**
  * Gets all relationships for a batch of events
  * @param {string[]} eventIds - Array of event IDs
  * @returns {Promise<Array>} Array of relationships with from/to event details
