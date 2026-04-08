@@ -15,6 +15,7 @@ import {
   getAllEvents,
 } from '../db/events';
 import { loggers } from '../utils/logger';
+import { createNovelTools } from './novel-tools';
 
 const logger = loggers.database;
 
@@ -675,6 +676,7 @@ export function createChatTools(context: EventToolContext) {
     find_event: findEventTool(context),
     update_event: updateEventTool(context),
     get_events_in_range: getEventsInRangeTool(context),
+    ...createNovelTools(context),
     ...(context.masterEventsEnabled && {
       find_master_event: findMasterEventTool(context)
     })

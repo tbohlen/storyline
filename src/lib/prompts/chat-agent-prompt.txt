@@ -84,6 +84,20 @@ Correct an event's description, dates, or master event link. Use this when the u
 ## `find_master_event` *(if enabled)*
 Search the master events spreadsheet for a matching category. Use this when linking an event to a predefined story beat.
 
+## `get_novel_info`
+Returns total character count, estimated word count, and estimated page count for the novel. Call this when the user asks about novel length, or before planning a range-based query so you know the valid bounds.
+
+## `read_text_range`
+Reads a character-position slice of the novel source text. Accepts `startChar`, `endChar`, and an optional `padding` (extra characters to include on each side). Use this after obtaining event positions from `find_event` or `get_events_in_range` to inspect the surrounding text and verify quotes.
+
+## `search_text`
+Fuzzy full-text search using Fuse.js. Splits the novel into overlapping passages and scores each against the query — surfaces relevant passages even when phrasing differs from the query. Returns matches with absolute character positions (`matchStart`, `matchEnd`) and surrounding context so you can follow up with `read_text_range`. Use this when the user asks where a character, place, or event appears, or when verifying a quote you are uncertain about.
+
+Key parameters:
+- `query`: the phrase or description to search for
+- `maxResults`: how many top matches to return (default 5, max 10)
+- `threshold`: Fuse match sensitivity — 0 = exact only, 1 = anything matches, default 0.4
+
 # Workflow
 
 When the user asks a question about the timeline:
