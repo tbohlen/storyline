@@ -1,5 +1,5 @@
 import { anthropic } from "@ai-sdk/anthropic";
-import { streamText } from "ai";
+import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { createChatTools } from "@/lib/tools/event-tools";
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     let masterEvents: Record<string, string>[] | undefined;
     if (masterEventsEnabled && process.env.MASTER_EVENTS_PATH) {
       try {
-        masterEvents = await readCsv(process.env.MASTER_EVENTS_PATH);
+        const dataDir = join(process.cwd(), "data");
+        masterEvents = await readCsv(join(dataDir, process.env.MASTER_EVENTS_PATH));
       } catch {
         // Non-fatal — continue without master events
       }
@@ -49,10 +50,10 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: anthropic(ANTHROPIC_MODEL),
-      messages,
+      messages: await convertToModelMessages(messages),
       system: systemPrompt,
       tools,
-      maxSteps: 10, // Allow multi-step tool use within a single response
+      stopWhen: stepCountIs(10),
     });
 
     return result.toUIMessageStreamResponse();
